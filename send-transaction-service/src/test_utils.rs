@@ -2,9 +2,15 @@
 //! with the client type.
 
 use {
-    crate::{tpu_info::NullTpuInfo, transaction_client::TpuClientNextClient},
+    crate::{
+        tpu_info::NullTpuInfo,
+    },
+    solana_gossip::cluster_info::ClusterInfo,
     solana_net_utils::sockets::{bind_to, localhost_port_range_for_tests},
-    std::net::{IpAddr, Ipv4Addr, SocketAddr},
+    std::{
+        net::{IpAddr, Ipv4Addr, SocketAddr},
+        sync::Arc,
+    },
     tokio::runtime::Handle,
     tokio_util::sync::CancellationToken,
 };

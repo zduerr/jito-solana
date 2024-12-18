@@ -540,12 +540,16 @@ mod test {
         crossbeam_channel::{bounded, unbounded},
         solana_account::AccountSharedData,
         solana_genesis_config::create_genesis_config,
+        solana_gossip::{cluster_info::ClusterInfo, contact_info::ContactInfo, socketaddr},
+        solana_keypair::Keypair,
+        solana_net_utils::SocketAddrSpace,
         solana_nonce::{self as nonce, state::DurableNonce},
         solana_pubkey::Pubkey,
         solana_signer::Signer,
         solana_system_interface::program as system_program,
         solana_system_transaction as system_transaction,
-        std::ops::Sub,
+        solana_time_utils::timestamp,
+        std::{net::Ipv4Addr, ops::Sub},
         tokio::runtime::Handle,
     };
 
@@ -593,6 +597,15 @@ mod test {
             retries: 0,
             last_sent_time: None,
         };
+
+        let cluster_info = Arc::new({
+            let keypair = Arc::new(Keypair::new());
+            let contact_info = ContactInfo::new_with_socketaddr(
+                &keypair.pubkey(),
+                &socketaddr!(Ipv4Addr::LOCALHOST, 1234),
+            );
+            ClusterInfo::new(contact_info, keypair, SocketAddrSpace::Unspecified)
+        });
 
         let exit = Arc::new(AtomicBool::new(false));
         let client =

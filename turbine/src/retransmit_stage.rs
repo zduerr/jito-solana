@@ -303,6 +303,7 @@ fn retransmit(
     shred_buf: &mut Vec<Vec<shred::Payload>>,
     votor_event_sender: &Sender<VotorEvent>,
     migration_status: &MigrationStatus,
+    shred_receiver_addresses: &ArcSwap<ShredReceiverAddresses>,
 ) -> Result<(), ()> {
     // Try to receive shreds from the channel without blocking. If the channel
     // is empty precompute turbine trees speculatively. If no cache updates are
@@ -389,6 +390,7 @@ fn retransmit(
         entry.record(now, out);
         stats
     };
+    let shred_receiver_addresses_local = shred_receiver_addresses.load();
     let retransmit_shred = |shred, socket, stats| {
         retransmit_shred(
             shred,
@@ -399,6 +401,7 @@ fn retransmit(
             socket_addr_space,
             socket,
             stats,
+            &shred_receiver_addresses_local,
         )
     };
 
@@ -452,6 +455,7 @@ fn retransmit(
 }
 
 // Retransmit a single shred to all downstream nodes
+#[allow(clippy::too_many_arguments)]
 fn retransmit_shred(
     shred: shred::Payload,
     root_bank: &Bank,
@@ -461,6 +465,7 @@ fn retransmit_shred(
     socket_addr_space: &SocketAddrSpace,
     socket: RetransmitSocket<'_>,
     stats: &RetransmitStats,
+    shred_receiver_addresses: &ShredReceiverAddresses,
 ) -> Option<RetransmitShredOutput> {
     let key = shred::layout::get_shred_id(shred.as_ref())?;
     if key.slot() < root_bank.slot()
@@ -495,6 +500,7 @@ fn retransmit_shred(
             }
             sent
         }
+<<<<<<< HEAD
         RetransmitSocket::Socket(_) | RetransmitSocket::Multihomed { .. } => {
             let socket = socket.get_socket();
             match multi_target_send(socket, shred, &addrs) {
@@ -505,6 +511,48 @@ fn retransmit_shred(
                          {num_failed}/{num_addrs} packets failed"
                     );
                     num_addrs - num_failed
+=======
+        Protocol::UDP => match socket {
+            RetransmitSocket::Xdp(sender) => {
+                let mut sent = num_addrs;
+                let mut send_addrs =
+                    Vec::with_capacity(num_addrs.saturating_add(shred_receiver_addresses.len()));
+                send_addrs.extend(addrs.iter().copied());
+                send_addrs.extend(shred_receiver_addresses.iter().copied());
+                if !send_addrs.is_empty() {
+                    // External shred receivers are intentionally not included in retransmit stats.
+                    if let Err(e) = sender.try_send(key.index() as usize, send_addrs, shred) {
+                        log::warn!("xdp channel full: {e:?}");
+                        stats
+                            .num_shreds_dropped_xdp_full
+                            .fetch_add(num_addrs, Ordering::Relaxed);
+                        sent = 0;
+                    }
+                }
+                sent
+            }
+            RetransmitSocket::Socket(_) | RetransmitSocket::Multihomed { .. } => {
+                let socket = socket.get_socket();
+                let mut all_addrs: SmallVec<
+                    [SocketAddr; 200 /* DATA_PLANE_FANOUT */ + 32 /* MAX_SHRED_RECEIVER_ADDRESSES */],
+                > = SmallVec::new();
+                let send_addrs = if shred_receiver_addresses.is_empty() {
+                    addrs.as_ref()
+                } else {
+                    all_addrs.extend(addrs.iter().copied());
+                    all_addrs.extend(shred_receiver_addresses.iter().copied());
+                    &all_addrs
+                };
+                match multi_target_send(socket, &shred, send_addrs) {
+                    Ok(()) => num_addrs,
+                    Err(SendPktsError::IoError(ioerr, num_failed)) => {
+                        error!(
+                            "retransmit_to multi_target_send error: {ioerr:?}, \
+                             {num_failed}/{num_addrs} packets failed"
+                        );
+                        num_addrs - num_failed
+                    }
+>>>>>>> 43cfbf56de (Jito Patch)
                 }
             }
         }
@@ -643,6 +691,7 @@ impl RetransmitStage {
         slot_status_notifier: Option<SlotStatusNotifier>,
         xdp_sender: Option<XdpSender>,
         votor_event_sender: Sender<VotorEvent>,
+        shred_receiver_addresses: Arc<ArcSwap<ShredReceiverAddresses>>,
     ) -> Self {
         let migration_status = bank_forks.read().unwrap().migration_status();
         let cluster_nodes_cache = ClusterNodesCache::<RetransmitStage>::new(
@@ -686,6 +735,7 @@ impl RetransmitStage {
                         &mut shred_buf,
                         &votor_event_sender,
                         &migration_status,
+                        &shred_receiver_addresses,
                     )
                     .is_ok()
                     {}

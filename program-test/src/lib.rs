@@ -3,8 +3,7 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 // Export tokio for test clients
-pub use tokio;
-use {
+pub use {
     agave_feature_set::{
         FEATURE_NAMES, FeatureSet, increase_cpi_account_info_limit, raise_cpi_nesting_limit_to_8,
     },
@@ -73,7 +72,7 @@ use {
         time::{Duration, Instant},
     },
     thiserror::Error,
-    tokio::task::JoinHandle,
+    tokio::{self, task::JoinHandle},
 };
 // Export types so test clients can limit their solana crate dependencies
 pub use {

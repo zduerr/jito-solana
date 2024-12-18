@@ -1,8 +1,8 @@
 use {
     super::*,
-    crate::cluster_nodes::ClusterNodesCache,
     agave_votor::event::VotorEventSender,
     agave_votor_messages::migration::MigrationStatus,
+    crate::{cluster_nodes::ClusterNodesCache, ShredReceiverAddresses},
     crossbeam_channel::Sender,
     itertools::Itertools,
     solana_entry::entry::Entry,
@@ -328,6 +328,8 @@ impl BroadcastRun for BroadcastDuplicatesRun {
         cluster_info: &ClusterInfo,
         sock: BroadcastSocket,
         bank_forks: &RwLock<BankForks>,
+        _shredstream_receiver_address: &ArcSwap<Option<SocketAddr>>,
+        _shred_receiver_addresses: &ArcSwap<ShredReceiverAddresses>,
     ) -> Result<()> {
         let (shreds, _) = receiver.recv()?;
         if shreds.is_empty() {

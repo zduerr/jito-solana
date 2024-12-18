@@ -10,9 +10,14 @@ use {
         vote_packet_receiver::VotePacketReceiver,
         vote_storage::VoteStorage,
     },
-    crate::banking_stage::{
-        consumer::{ExecuteAndCommitTransactionsOutput, ProcessTransactionBatchOutput},
-        transaction_scheduler::transaction_state_container::{RuntimeTransactionView, SharedBytes},
+    crate::{
+        banking_stage::{
+            consumer::{ExecuteAndCommitTransactionsOutput, ProcessTransactionBatchOutput},
+            transaction_scheduler::transaction_state_container::{
+                RuntimeTransactionView, SharedBytes,
+            },
+        },
+        bundle_stage::bundle_account_locker::BundleAccountLocker,
     },
     agave_transaction_view::{
         transaction_version::TransactionVersion, transaction_view::SanitizedTransactionView,
@@ -64,6 +69,7 @@ pub struct VoteWorker {
     storage: VoteStorage,
     bank_forks: Arc<RwLock<BankForks>>,
     consumer: Consumer,
+    bundle_account_locker: BundleAccountLocker,
 }
 
 impl VoteWorker {
@@ -76,6 +82,7 @@ impl VoteWorker {
         storage: VoteStorage,
         bank_forks: Arc<RwLock<BankForks>>,
         consumer: Consumer,
+        bundle_account_locker: BundleAccountLocker,
     ) -> Self {
         Self {
             exit,
@@ -86,6 +93,7 @@ impl VoteWorker {
             storage,
             bank_forks,
             consumer,
+            bundle_account_locker,
         }
     }
 
@@ -295,6 +303,7 @@ impl VoteWorker {
         reached_end_of_slot
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn do_process_packets(
         &self,
         bank: &Bank,
@@ -411,7 +420,8 @@ impl VoteWorker {
         transactions: &[impl TransactionWithMeta],
     ) -> ProcessTransactionsSummary {
         let process_transaction_batch_output =
-            consumer.process_and_record_transactions(bank, transactions);
+            consumer.process_and_record_transactions(bank, transactions, &self.bundle_account_locker,
+                false,);
 
         let ProcessTransactionBatchOutput {
             cost_model_throttled_transactions_count,

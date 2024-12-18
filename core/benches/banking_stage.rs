@@ -20,8 +20,11 @@ use {
     log::*,
     rand::{Rng, rng},
     rayon::prelude::*,
-    solana_core::{banking_stage::BankingStage, banking_trace::BankingTracer},
-    solana_entry::entry::{Entry, next_hash},
+    solana_core::{
+        banking_stage::BankingStage, banking_trace::BankingTracer,
+        bundle_stage::bundle_account_locker::BundleAccountLocker,
+    },
+    solana_entry::entry::{next_hash, Entry},
     solana_genesis_config::GenesisConfig,
     solana_hash::Hash,
     solana_keypair::Keypair,
@@ -43,6 +46,7 @@ use {
     solana_time_utils::timestamp,
     solana_transaction::{Transaction, versioned::VersionedTransaction},
     std::{
+        collections::HashSet,
         iter::repeat_with,
         sync::{Arc, atomic::Ordering},
         time::{Duration, Instant},
@@ -250,6 +254,9 @@ fn bench_banking(
         s,
         None,
         bank_forks,
+        HashSet::default(),
+        BundleAccountLocker::default(),
+        None,
         None,
     );
 
