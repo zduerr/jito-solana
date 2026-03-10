@@ -41,9 +41,10 @@ use {
     tokio::{runtime::Runtime, signal},
 };
 use {
+    agave_feature_set::FeatureSet,
     solana_account::{AccountSharedData, ReadableAccount},
-    solana_keypair::Pubkey,
     solana_program_test::{Epoch, StateMut},
+    solana_pubkey::Pubkey,
     solana_stake_interface::{
         stake_flags::StakeFlags,
         state::{Authorized, Delegation, Meta, Stake, StakeStateV2},
@@ -365,11 +366,11 @@ impl BamLocalCluster {
 
         let mut vote_keypairs = Vec::new();
         for validator in &config.validators {
-            vote_keypairs.push(ValidatorVoteKeypairs {
-                node_keypair: read_keypair_file(&validator.node_keypair)?,
-                vote_keypair: read_keypair_file(&validator.vote_keypair)?,
-                stake_keypair: Keypair::new(),
-            });
+            vote_keypairs.push(ValidatorVoteKeypairs::new(
+                read_keypair_file(&validator.node_keypair)?,
+                read_keypair_file(&validator.vote_keypair)?,
+                Keypair::new(),
+            ));
         }
 
         let stakes = vec![DEFAULT_NODE_STAKE; config.validators.len()];
@@ -505,18 +506,26 @@ impl BamLocalCluster {
         let voting_keypair = voting_keypairs[0].borrow().vote_keypair.insecure_clone();
 
         let validator_pubkey = voting_keypairs[0].borrow().node_keypair.pubkey();
+        let validator_bls_pubkey = Some(
+            voting_keypairs[0]
+                .borrow()
+                .bls_keypair
+                .public
+                .to_bytes_compressed(),
+        );
         let mut genesis_config = create_genesis_config_with_leader_ex(
             mint_lamports,
             &mint_keypair.pubkey(),
             &validator_pubkey,
             &voting_keypairs[0].borrow().vote_keypair.pubkey(),
             &voting_keypairs[0].borrow().stake_keypair.pubkey(),
-            None,
+            validator_bls_pubkey,
             stakes[0],
             validator_lamports,
             FeeRateGovernor::default(),
             Rent::default(),
             cluster_type,
+            &FeatureSet::all_enabled(),
             vec![],
         );
 
@@ -566,12 +575,20 @@ impl BamLocalCluster {
 
             // Create accounts
             let node_account = Account::new(validator_lamports, 0, &system_program::id());
+            let bls_pubkey_compressed = validator_voting_keypairs
+                .borrow()
+                .bls_keypair
+                .public
+                .to_bytes_compressed();
             let vote_account = vote_state::create_v4_account_with_authorized(
                 &node_pubkey,
                 &vote_pubkey,
+                bls_pubkey_compressed,
                 &vote_pubkey,
-                None,
                 0,
+                &vote_pubkey,
+                0,
+                &vote_pubkey,
                 *stake,
             );
             let stake_account = Account::from(create_stake_account(

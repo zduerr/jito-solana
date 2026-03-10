@@ -183,7 +183,7 @@ mod tests {
             mint_keypair,
             ..
         } = create_genesis_config(2);
-        let (bank, _) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let bundle_account_locker = BundleAccountLocker::default();
 
@@ -224,6 +224,7 @@ mod tests {
             &bank,
             &bank,
             false,
+            false,
             bank.get_transaction_account_lock_limit(),
             &HashSet::default(),
         )
@@ -234,6 +235,7 @@ mod tests {
             tx1_data,
             &bank,
             &bank,
+            false,
             false,
             bank.get_transaction_account_lock_limit(),
             &HashSet::default(),
@@ -322,7 +324,7 @@ mod tests {
             mint_keypair,
             ..
         } = create_genesis_config(2);
-        let (bank, _) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let bundle_account_locker = BundleAccountLocker::default();
 
@@ -361,6 +363,7 @@ mod tests {
             &bank,
             &bank,
             false,
+            false,
             bank.get_transaction_account_lock_limit(),
             &HashSet::default(),
         )
@@ -370,6 +373,7 @@ mod tests {
             tx1_data,
             &bank,
             &bank,
+            false,
             false,
             bank.get_transaction_account_lock_limit(),
             &HashSet::default(),

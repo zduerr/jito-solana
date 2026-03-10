@@ -86,6 +86,7 @@ use {
     solana_rent::Rent,
     solana_signer::Signer,
     solana_stake_interface::{
+        program as stake_program,
         stake_flags::StakeFlags,
         state::{Authorized, Delegation, Meta, Stake, StakeStateV2},
     },
@@ -154,11 +155,8 @@ fn create_stake_account(
     rent: &Rent,
     lamports: u64,
 ) -> AccountSharedData {
-    let mut stake_account = AccountSharedData::new(
-        lamports,
-        StakeStateV2::size_of(),
-        &solana_stake_interface::program::id(),
-    );
+    let mut stake_account =
+        AccountSharedData::new(lamports, StakeStateV2::size_of(), &stake_program::id());
 
     let vote_state =
         vote_state::VoteStateV4::deserialize(vote_account.data(), voter_pubkey).unwrap();

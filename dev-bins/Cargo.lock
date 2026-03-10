@@ -689,7 +689,7 @@ dependencies = [
  "ark-std 0.5.0",
  "educe 0.6.0",
  "fnv",
- "hashbrown 0.15.2",
+ "hashbrown 0.15.5",
  "itertools 0.13.0",
  "num-bigint 0.4.6",
  "num-integer",
@@ -808,7 +808,7 @@ dependencies = [
  "ark-std 0.5.0",
  "educe 0.6.0",
  "fnv",
- "hashbrown 0.15.2",
+ "hashbrown 0.15.5",
 ]
 
 [[package]]
@@ -1155,7 +1155,7 @@ checksum = "c51b96c5a8ed8705b40d655273bc4212cbbf38d4e3be2788f36306f154523ec7"
 dependencies = [
  "bytes",
  "core-error",
- "hashbrown 0.15.2",
+ "hashbrown 0.15.5",
  "log",
  "object",
  "thiserror 1.0.69",
@@ -2887,9 +2887,9 @@ checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 
 [[package]]
 name = "hashbrown"
-version = "0.15.2"
+version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
+checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
  "allocator-api2",
  "equivalent",
@@ -3769,7 +3769,7 @@ version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a35523c6dfa972e1fd19132ef647eff4360a6546c6271807e1327ca6e8797f96"
 dependencies = [
- "hashbrown 0.15.2",
+ "hashbrown 0.15.5",
 ]
 
 [[package]]
@@ -4347,13 +4347,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62948e14d923ea95ea2c7c86c71013138b66525b86bdc08d2dcc262bdb497b87"
 dependencies = [
  "crc32fast",
-<<<<<<< HEAD
  "hashbrown 0.15.5",
  "indexmap 2.13.0",
-=======
- "hashbrown 0.15.2",
- "indexmap 2.12.0",
->>>>>>> 43cfbf56de (Jito Patch)
  "memchr",
 ]
 
@@ -6296,12 +6291,8 @@ dependencies = [
  "solana-client",
  "solana-clock",
  "solana-commitment-config",
-<<<<<<< HEAD
- "solana-hash 4.2.0",
-=======
  "solana-gossip",
- "solana-hash 3.1.0",
->>>>>>> 43cfbf56de (Jito Patch)
+ "solana-hash 4.2.0",
  "solana-message",
  "solana-net-utils",
  "solana-pubkey 4.1.0",
@@ -6972,11 +6963,7 @@ dependencies = [
  "solana-version",
  "solana-vote",
  "solana-vote-program",
-<<<<<<< HEAD
-=======
- "solana-wen-restart",
  "spl-memo-interface",
->>>>>>> 43cfbf56de (Jito Patch)
  "static_assertions",
  "strum",
  "strum_macros",
@@ -6986,14 +6973,10 @@ dependencies = [
  "thiserror 2.0.18",
  "tikv-jemallocator",
  "tokio",
-<<<<<<< HEAD
- "tokio-util 0.7.18",
-=======
  "tokio-stream",
- "tokio-util 0.7.17",
+ "tokio-util 0.7.18",
  "tonic",
  "tonic-build",
->>>>>>> 43cfbf56de (Jito Patch)
  "trees",
 ]
 
@@ -8472,13 +8455,8 @@ dependencies = [
  "solana-poh",
  "solana-poh-config",
  "solana-program-pack",
-<<<<<<< HEAD
- "solana-pubkey 4.1.0",
-=======
  "solana-program-runtime",
- "solana-pubkey 3.0.0",
- "solana-quic-definitions",
->>>>>>> 43cfbf56de (Jito Patch)
+ "solana-pubkey 4.1.0",
  "solana-rayon-threadlimit",
  "solana-rpc-client-api",
  "solana-runtime",
@@ -8883,13 +8861,9 @@ dependencies = [
  "log",
  "solana-client",
  "solana-clock",
-<<<<<<< HEAD
- "solana-hash 4.2.0",
-=======
  "solana-connection-cache",
  "solana-gossip",
- "solana-hash 3.1.0",
->>>>>>> 43cfbf56de (Jito Patch)
+ "solana-hash 4.2.0",
  "solana-keypair",
  "solana-measure",
  "solana-metrics",
@@ -9375,11 +9349,8 @@ version = "4.0.0-alpha.0"
 dependencies = [
  "agave-feature-set",
  "agave-snapshots",
-<<<<<<< HEAD
  "agave-syscalls",
-=======
  "arc-swap",
->>>>>>> 43cfbf56de (Jito Patch)
  "base64 0.22.1",
  "bincode",
  "crossbeam-channel",
@@ -9678,11 +9649,7 @@ dependencies = [
  "rand 0.9.2",
  "rand_chacha 0.9.0",
  "rayon",
-<<<<<<< HEAD
-=======
- "rustls 0.23.35",
  "smallvec",
->>>>>>> 43cfbf56de (Jito Patch)
  "solana-clock",
  "solana-cluster-type",
  "solana-entry",

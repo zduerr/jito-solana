@@ -339,7 +339,7 @@ impl BundleConsumer {
                 &mut error_counters,
                 TransactionProcessingConfig {
                     account_overrides: None,
-                    check_program_modification_slot: bank.check_program_modification_slot(),
+                    check_program_deployment_slot: bank.check_program_deployment_slot(),
                     log_messages_bytes_limit: self.log_messages_bytes_limit,
                     limit_to_load_programs: true,
                     recording_config: ExecutionRecordingConfig::new_single_setting(
@@ -603,7 +603,7 @@ mod tests {
             &Pubkey::new_unique(),
             bootstrap_validator_stake_lamports(),
         );
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
         let pubkey = solana_pubkey::new_rand();
 
         let transactions = sanitize_transactions(vec![transfer(
@@ -622,7 +622,7 @@ mod tests {
         let committer = Committer::new(
             None,
             replay_vote_sender,
-            Arc::new(PrioritizationFeeCache::new(0u64)),
+            Some(Arc::new(PrioritizationFeeCache::new(0u64))),
         );
         let mut consumer = BundleConsumer::new(committer, recorder, QosService::new(1), None);
 
@@ -662,7 +662,7 @@ mod tests {
             &Pubkey::new_unique(),
             bootstrap_validator_stake_lamports(),
         );
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let transactions = sanitize_transactions(vec![transfer(
             &Keypair::new(),
@@ -680,7 +680,7 @@ mod tests {
         let committer = Committer::new(
             None,
             replay_vote_sender,
-            Arc::new(PrioritizationFeeCache::new(0u64)),
+            Some(Arc::new(PrioritizationFeeCache::new(0u64))),
         );
         let mut consumer = BundleConsumer::new(committer, recorder, QosService::new(1), None);
 
@@ -721,7 +721,7 @@ mod tests {
             &Pubkey::new_unique(),
             bootstrap_validator_stake_lamports(),
         );
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let transactions = sanitize_transactions(vec![
             transfer(&mint_keypair, &new_rand(), 1, genesis_config.hash()),
@@ -739,7 +739,7 @@ mod tests {
         let committer = Committer::new(
             None,
             replay_vote_sender,
-            Arc::new(PrioritizationFeeCache::new(0u64)),
+            Some(Arc::new(PrioritizationFeeCache::new(0u64))),
         );
         let mut consumer = BundleConsumer::new(committer, recorder, QosService::new(1), None);
 
@@ -792,7 +792,7 @@ mod tests {
             &Pubkey::new_unique(),
             bootstrap_validator_stake_lamports(),
         );
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let kp1 = Keypair::new();
         let kp2 = Keypair::new();
@@ -811,7 +811,7 @@ mod tests {
         let committer = Committer::new(
             None,
             replay_vote_sender,
-            Arc::new(PrioritizationFeeCache::new(0u64)),
+            Some(Arc::new(PrioritizationFeeCache::new(0u64))),
         );
         let mut consumer = BundleConsumer::new(committer, recorder, QosService::new(1), None);
 
@@ -859,7 +859,7 @@ mod tests {
             &Pubkey::new_unique(),
             bootstrap_validator_stake_lamports(),
         );
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let kp1 = Keypair::new();
         let kp2 = Keypair::new();
@@ -887,7 +887,7 @@ mod tests {
         let committer = Committer::new(
             None,
             replay_vote_sender,
-            Arc::new(PrioritizationFeeCache::new(0u64)),
+            Some(Arc::new(PrioritizationFeeCache::new(0u64))),
         );
         let mut consumer = BundleConsumer::new(committer, recorder, QosService::new(1), None);
 
@@ -936,7 +936,7 @@ mod tests {
             &Pubkey::new_unique(),
             bootstrap_validator_stake_lamports(),
         );
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let transactions = sanitize_transactions(vec![transfer(
             &mint_keypair,
@@ -954,7 +954,7 @@ mod tests {
         let committer = Committer::new(
             None,
             replay_vote_sender,
-            Arc::new(PrioritizationFeeCache::new(0u64)),
+            Some(Arc::new(PrioritizationFeeCache::new(0u64))),
         );
         let mut consumer = BundleConsumer::new(committer, recorder, QosService::new(1), None);
 
@@ -1017,7 +1017,7 @@ mod tests {
             &Pubkey::new_unique(),
             bootstrap_validator_stake_lamports(),
         );
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let tx = sanitize_transactions(vec![transfer(
             &mint_keypair,
@@ -1036,7 +1036,7 @@ mod tests {
         let committer = Committer::new(
             None,
             replay_vote_sender,
-            Arc::new(PrioritizationFeeCache::new(0u64)),
+            Some(Arc::new(PrioritizationFeeCache::new(0u64))),
         );
         let mut consumer = BundleConsumer::new(committer, recorder, QosService::new(1), None);
 
@@ -1078,7 +1078,7 @@ mod tests {
             &Pubkey::new_unique(),
             bootstrap_validator_stake_lamports(),
         );
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let kp1 = Keypair::new();
         let kp2 = Keypair::new();
@@ -1096,7 +1096,7 @@ mod tests {
         let committer = Committer::new(
             None,
             replay_vote_sender,
-            Arc::new(PrioritizationFeeCache::new(0u64)),
+            Some(Arc::new(PrioritizationFeeCache::new(0u64))),
         );
         let mut consumer = BundleConsumer::new(committer, recorder, QosService::new(1), None);
 

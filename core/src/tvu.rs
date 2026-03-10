@@ -67,7 +67,7 @@ use {
         quic::{QuicStreamerConfig, SpawnServerResult, spawn_simple_qos_server},
         streamer::StakedNodes,
     },
-    solana_turbine::{retransmit_stage::RetransmitStage, xdp::XdpSender, ShredReceiverAddresses},
+    solana_turbine::{retransmit_stage::RetransmitStage, ShredReceiverAddresses},
     std::{
         collections::HashSet,
         net::{SocketAddr, UdpSocket},

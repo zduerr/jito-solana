@@ -1,8 +1,8 @@
 use {
     super::*,
+    crate::{ShredReceiverAddresses, cluster_nodes::ClusterNodesCache},
     agave_votor::event::VotorEventSender,
     agave_votor_messages::migration::MigrationStatus,
-    crate::{cluster_nodes::ClusterNodesCache, ShredReceiverAddresses},
     crossbeam_channel::Sender,
     itertools::Itertools,
     solana_entry::entry::Entry,
@@ -12,7 +12,7 @@ use {
     solana_signature::Signature,
     solana_signer::Signer,
     solana_system_transaction as system_transaction,
-    std::collections::HashSet,
+    std::{collections::HashSet, net::SocketAddr},
 };
 
 pub const MINIMUM_DUPLICATE_SLOT: Slot = 20;

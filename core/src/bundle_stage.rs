@@ -392,7 +392,7 @@ impl BundleStage {
         let committer = Committer::new(
             transaction_status_sender,
             replay_vote_sender,
-            prioritization_fee_cache.clone(),
+            Some(prioritization_fee_cache.clone()),
         );
         let decision_maker = DecisionMaker::from(poh_recorder.read().unwrap().deref());
 
@@ -924,6 +924,7 @@ mod tests {
             tip_payment::JitoTipPaymentConfig,
             TipDistributionAccountConfig, TipManagerConfig,
         },
+        agave_feature_set::FeatureSet,
         crossbeam_channel::{bounded, unbounded},
         solana_cluster_type::ClusterType,
         solana_fee_calculator::{FeeRateGovernor, DEFAULT_TARGET_LAMPORTS_PER_SIGNATURE},
@@ -977,6 +978,7 @@ mod tests {
             },
             rent.clone(), // most tests don't expect rent
             ClusterType::Development,
+            &FeatureSet::all_enabled(),
             spl_programs(&rent),
         );
         genesis_config.ticks_per_slot *= 8;
@@ -1000,7 +1002,7 @@ mod tests {
             leader_keypair,
         } = create_genesis_config(2);
         let (bank, bank_forks) =
-            Bank::new_no_wallclock_throttle_for_tests(&genesis_config_info.genesis_config);
+            Bank::new_with_bank_forks_for_tests(&genesis_config_info.genesis_config);
 
         let bank = Bank::new_from_parent(bank, &Pubkey::new_unique(), 1);
         bank_forks.write().unwrap().insert(bank);
@@ -1138,7 +1140,7 @@ mod tests {
             leader_keypair,
         } = create_genesis_config(2);
         let (bank, bank_forks) =
-            Bank::new_no_wallclock_throttle_for_tests(&genesis_config_info.genesis_config);
+            Bank::new_with_bank_forks_for_tests(&genesis_config_info.genesis_config);
 
         let bank = Bank::new_from_parent(bank, &Pubkey::new_unique(), 1);
         bank_forks.write().unwrap().insert(bank);
@@ -1231,7 +1233,7 @@ mod tests {
             leader_keypair,
         } = create_genesis_config(2);
         let (bank, bank_forks) =
-            Bank::new_no_wallclock_throttle_for_tests(&genesis_config_info.genesis_config);
+            Bank::new_with_bank_forks_for_tests(&genesis_config_info.genesis_config);
 
         let bank = Bank::new_from_parent(bank, &Pubkey::new_unique(), 1);
         bank_forks.write().unwrap().insert(bank);
@@ -1355,7 +1357,7 @@ mod tests {
             leader_keypair,
         } = create_genesis_config(2);
         let (bank, bank_forks) =
-            Bank::new_no_wallclock_throttle_for_tests(&genesis_config_info.genesis_config);
+            Bank::new_with_bank_forks_for_tests(&genesis_config_info.genesis_config);
 
         let bank = Bank::new_from_parent(bank, &Pubkey::new_unique(), 1);
         bank_forks.write().unwrap().insert(bank);
@@ -1479,7 +1481,7 @@ mod tests {
             leader_keypair,
         } = create_genesis_config(2);
         let (bank, bank_forks) =
-            Bank::new_no_wallclock_throttle_for_tests(&genesis_config_info.genesis_config);
+            Bank::new_with_bank_forks_for_tests(&genesis_config_info.genesis_config);
 
         let bank = Bank::new_from_parent(bank, &Pubkey::new_unique(), 1);
         bank_forks.write().unwrap().insert(bank);

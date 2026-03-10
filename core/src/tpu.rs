@@ -20,8 +20,8 @@ use {
         },
         fetch_stage::FetchStage,
         forwarding_stage::{
-            ForwardAddressGetter, ForwardingClientConfig, SpawnForwardingStageResult,
-            spawn_forwarding_stage,
+            spawn_forwarding_stage, ForwardAddressGetter, ForwardingClientConfig,
+            SpawnForwardingStageResult,
         },
         proxy::{
             block_engine_stage::{BlockBuilderFeeInfo, BlockEngineConfig, BlockEngineStage},
@@ -37,11 +37,9 @@ use {
     },
     agave_votor::event::VotorEventSender,
     agave_xdp::xdp_retransmitter::XdpSender,
-    crossbeam_channel::{Receiver, bounded, unbounded},
     ahash::{HashSet, HashSetExt},
     arc_swap::ArcSwap,
-    bytes::Bytes,
-    crossbeam_channel::{bounded, unbounded, Receiver},
+    crossbeam_channel::{bounded, Receiver},
     solana_clock::Slot,
     solana_gossip::cluster_info::ClusterInfo,
     solana_keypair::Keypair,
@@ -66,14 +64,13 @@ use {
     solana_signer::Signer,
     solana_streamer::{
         quic::{
-            SimpleQosQuicStreamerConfig, SpawnServerResult, SwQosQuicStreamerConfig,
-            spawn_simple_qos_server, spawn_stake_wighted_qos_server,
+            spawn_simple_qos_server, spawn_stake_wighted_qos_server, SimpleQosQuicStreamerConfig,
+            SpawnServerResult, SwQosQuicStreamerConfig,
         },
         streamer::StakedNodes,
     },
     solana_turbine::{
         broadcast_stage::{BroadcastStage, BroadcastStageType},
-        xdp::XdpSender,
         ShredReceiverAddresses,
     },
     std::{
@@ -204,11 +201,11 @@ impl Tpu {
 
         // Packets from fetch stage and quic server are intercepted and sent through fetch_stage_manager
         // If relayer is connected, packets are dropped. If not, packets are forwarded on to packet_sender
-        let (fetch_stage_manager_sender, fetch_stage_manager_receiver) = unbounded();
-        let (sigverify_stage_sender, sigverify_stage_receiver) = unbounded();
+        let (fetch_stage_manager_sender, fetch_stage_manager_receiver) = bounded(TPU_CHANNEL_SIZE);
+        let (sigverify_stage_sender, sigverify_stage_receiver) = bounded(TPU_CHANNEL_SIZE);
 
-        let (vote_packet_sender, vote_packet_receiver) = unbounded();
-        let (forwarded_packet_sender, forwarded_packet_receiver) = unbounded();
+        let (vote_packet_sender, vote_packet_receiver) = bounded(TPU_CHANNEL_SIZE);
+        let (forwarded_packet_sender, forwarded_packet_receiver) = bounded(TPU_CHANNEL_SIZE);
         let fetch_stage = FetchStage::new_with_sender(
             tpu_vote_sockets,
             exit.clone(),
@@ -302,10 +299,15 @@ impl Tpu {
         let sigverify_stage = {
             let verifier = TransactionSigVerifier::new(
                 sigverify_threadpool.clone(),
-                non_vote_sender,
+                banking_stage_sender.clone(),
                 enable_block_production_forwarding.then(|| forward_stage_sender.clone()),
             );
-            SigVerifyStage::new(sigverify_stage_receiver, verifier, "solSigVerTpu", "tpu-verifier")
+            SigVerifyStage::new(
+                sigverify_stage_receiver,
+                verifier,
+                "solSigVerTpu",
+                "tpu-verifier",
+            )
         };
 
         let vote_sigverify_stage = {
@@ -344,13 +346,14 @@ impl Tpu {
         );
         let (verified_bundle_sender, verified_bundle_receiver) = bounded(1024);
         let bundle_sigverify_stage = BundleSigverifyStage::new(
+            sigverify_threadpool.clone(),
             unverified_bundle_receiver,
             verified_bundle_sender,
             exit.clone(),
         );
 
         let bam_tpu_info = Arc::new(ArcSwap::new(Arc::new(None)));
-        let (heartbeat_tx, heartbeat_rx) = unbounded();
+        let (heartbeat_tx, heartbeat_rx) = bounded(TPU_CHANNEL_SIZE);
         let fetch_stage_manager = FetchStageManager::new(
             cluster_info.clone(),
             heartbeat_rx,
@@ -421,7 +424,7 @@ impl Tpu {
             replay_vote_sender.clone(),
             log_messages_bytes_limit,
             bank_forks.clone(),
-            prioritization_fee_cache,
+            prioritization_fee_cache.clone(),
             blacklisted_accounts.clone(),
             bundle_account_locker.clone(),
             Some(TipProcessingDependencies {
@@ -465,7 +468,7 @@ impl Tpu {
             tip_manager,
             bundle_account_locker,
             &block_builder_fee_info,
-            prioritization_fee_cache,
+            prioritization_fee_cache.as_ref().expect("prioritization fee cache required for bundle stage"),
             blacklisted_accounts,
         );
 
@@ -479,7 +482,7 @@ impl Tpu {
 
         let (entry_receiver, tpu_entry_notifier) =
             if let Some(entry_notification_sender) = entry_notification_sender {
-                let (broadcast_entry_sender, broadcast_entry_receiver) = unbounded();
+                let (broadcast_entry_sender, broadcast_entry_receiver) = bounded(TPU_CHANNEL_SIZE);
                 let tpu_entry_notifier = TpuEntryNotifier::new(
                     entry_receiver,
                     entry_notification_sender,

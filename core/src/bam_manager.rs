@@ -1,3 +1,4 @@
+use solana_tls_utils::NotifyKeyUpdate;
 /// Facilitates the BAM sub-system in the validator:
 /// - Tries to connect to BAM
 /// - Sends leader state to BAM
@@ -12,6 +13,7 @@ use std::{
         Arc, RwLock,
     },
 };
+
 use {
     crate::{
         admin_rpc_post_init::{KeyUpdaterType, KeyUpdaters},
@@ -29,7 +31,6 @@ use {
     solana_gossip::cluster_info::ClusterInfo,
     solana_poh::poh_recorder::PohRecorder,
     solana_pubkey::Pubkey,
-    solana_quic_definitions::NotifyKeyUpdate,
     solana_runtime::bank::Bank,
     solana_signer::Signer,
     solana_version::ClientId,
@@ -143,7 +144,7 @@ impl BamManager {
 
                     // Set ClientId to 'JitoSolana'
                     if current_client_id != fallback_client_id {
-                        Self::set_client_id(&dependencies.cluster_info, fallback_client_id);
+                        Self::set_client_id(&dependencies.cluster_info, fallback_client_id.clone());
                         current_client_id = fallback_client_id;
                     }
 
@@ -289,7 +290,7 @@ impl BamManager {
 
             // Set BAM Client Id (If not set already)
             if current_client_id != bam_client_id {
-                Self::set_client_id(&dependencies.cluster_info, bam_client_id);
+                Self::set_client_id(&dependencies.cluster_info, bam_client_id.clone());
                 current_client_id = bam_client_id;
             }
 

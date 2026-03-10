@@ -37,6 +37,7 @@ impl BundlePacketDeserializer {
         root_bank: &Bank,
         working_bank: &Bank,
         enable_static_instruction_limit: bool,
+        enable_instruction_accounts_limit: bool,
         transaction_account_lock_limit: usize,
         blacklisted_accounts: &HashSet<Pubkey>,
     ) -> Result<TransactionViewState, PacketHandlingError> {
@@ -45,6 +46,7 @@ impl BundlePacketDeserializer {
             working_bank,
             enable_static_instruction_limit,
             transaction_account_lock_limit,
+            enable_instruction_accounts_limit,
         )?;
         if validate_account_locks(
             view.account_keys(),

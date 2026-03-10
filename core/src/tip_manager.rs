@@ -242,6 +242,7 @@ impl TipManager {
             bank,
             bank.get_reserved_account_keys(),
             true,
+            true,
         )
         .unwrap())
     }
@@ -320,6 +321,7 @@ impl TipManager {
             bank,
             bank.get_reserved_account_keys(),
             true,
+            true,
         )
         .unwrap())
     }
@@ -368,6 +370,7 @@ impl TipManager {
             None,
             bank,
             bank.get_reserved_account_keys(),
+            true,
             true,
         )
         .unwrap())
@@ -457,6 +460,7 @@ impl TipManager {
             None,
             bank,
             bank.get_reserved_account_keys(),
+            true,
             true,
         )
         .unwrap())

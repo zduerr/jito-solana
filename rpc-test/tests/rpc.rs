@@ -1,6 +1,6 @@
 use {
-    async_trait::async_trait,
     assert_matches::assert_matches,
+    async_trait::async_trait,
     bincode::serialize,
     crossbeam_channel::unbounded,
     futures_util::StreamExt,
@@ -22,23 +22,26 @@ use {
             SimulationSlotConfig,
         },
         client_error::{ErrorKind as ClientErrorKind, Result as ClientResult},
-        config::{RpcAccountInfoConfig, RpcSignatureSubscribeConfig, RpcSimulateTransactionConfig},
-        request::RpcError,
+        config::{
+            RpcAccountInfoConfig, RpcSignatureSubscribeConfig,
+            RpcSimulateTransactionAccountsConfig, RpcSimulateTransactionConfig,
+        },
+        request::{RpcError, RpcResponseErrorData},
         response::{Response as RpcResponse, RpcSignatureResult, SlotUpdate},
     },
     solana_signature::Signature,
     solana_signer::Signer,
     solana_system_transaction as system_transaction,
     solana_test_validator::TestValidator,
-    solana_tpu_client::tpu_client::{TpuClient, TpuClientConfig, DEFAULT_TPU_CONNECTION_POOL_SIZE},
+    solana_tpu_client_next::{leader_updater::LeaderUpdater, ClientBuilder},
     solana_transaction::{Transaction, TransactionError},
     solana_transaction_status::{TransactionStatus, UiTransactionEncoding},
     std::{
         collections::HashSet,
         net::SocketAddr,
         sync::{
-            Arc,
             atomic::{AtomicUsize, Ordering},
+            Arc,
         },
         thread::sleep,
         time::{Duration, Instant},
@@ -440,7 +443,7 @@ fn test_rpc_subscriptions() {
         .value;
     assert!(mint_balance >= transactions.len() as u64);
 
-    let bind_socket = sockets::bind_to_localhost_unique().unwrap();
+    let bind_socket = bind_to_localhost_unique().unwrap();
     let tpu_address = *test_validator.tpu_quic();
 
     let leader_updater = Box::new(TestLeaderUpdater {
@@ -539,7 +542,7 @@ fn test_run_tpu_send_transaction() {
 
     // Send transaction using tpu-client-next
     let rt = Runtime::new().unwrap();
-    let bind_socket = sockets::bind_to_localhost_unique().unwrap();
+    let bind_socket = bind_to_localhost_unique().unwrap();
     let tpu_address = *test_validator.tpu_quic();
 
     let leader_updater = Box::new(TestLeaderUpdater {

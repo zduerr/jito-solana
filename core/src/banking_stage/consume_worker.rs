@@ -2406,7 +2406,6 @@ mod tests {
             AddressLookupTableAccount, SimpleAddressLoader, VersionedMessage,
             v0::{self, LoadedAddresses},
         },
-        solana_native_token::LAMPORTS_PER_SOL,
         solana_net_utils::SocketAddrSpace,
         solana_poh::{
             record_channels::{RecordReceiver, record_channels},
@@ -2473,7 +2472,7 @@ mod tests {
                 .into_iter()
                 .map(|(a, b)| (a, Account::from(b))),
         );
-        let (bank, bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
         // Warp to next epoch for MaxAge tests.
         let mut bank = Bank::new_from_parent(
             bank.clone(),

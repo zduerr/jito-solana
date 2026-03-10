@@ -513,7 +513,7 @@ mod bam_manager_tests {
         tempfile::TempDir,
     ) {
         let genesis_config = create_genesis_config(1000).genesis_config;
-        let (bank, bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let ledger_path = tempfile::tempdir().unwrap();
         let blockstore =

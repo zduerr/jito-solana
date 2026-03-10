@@ -158,7 +158,7 @@ fn main() {
         tpu_vote_receiver,
         gossip_vote_sender,
         gossip_vote_receiver,
-    } = banking_tracer.create_channels(false);
+    } = banking_tracer.create_channels();
 
     let banking_stage = BankingStage::new_num_threads(
         // this doesn't matter for the BAM test
@@ -176,7 +176,7 @@ fn main() {
         replay_vote_sender,
         None,
         bank_forks.clone(),
-        prioritization_fee_cache,
+        Some(prioritization_fee_cache),
         HashSet::default(),
         BundleAccountLocker::default(),
         None,

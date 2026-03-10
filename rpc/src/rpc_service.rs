@@ -869,7 +869,7 @@ mod tests {
 
         let client = create_client_for_tests(
             runtime.handle().clone(),
-            tpu_address,
+            cluster_info.clone(),
             send_transaction_service_config.tpu_peers.clone(),
             send_transaction_service_config.leader_forward_count,
         );

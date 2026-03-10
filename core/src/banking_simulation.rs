@@ -873,6 +873,7 @@ impl BankingSimulator {
             replay_vote_sender,
             None,
             bank_forks.clone(),
+            None,
             collections::HashSet::default(),
             BundleAccountLocker::default(),
             None,

@@ -34,6 +34,7 @@ solana-ledger = { workspace = true }
 solana-local-cluster = { workspace = true }
 solana-native-token = { workspace = true }
 solana-program-test = { workspace = true }
+solana-pubkey = { workspace = true }
 solana-rent = { workspace = true }
 solana-rpc = { workspace = true }
 solana-rpc-client = { workspace = true }

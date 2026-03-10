@@ -1,7 +1,7 @@
 use {
     crate::{client_ids::ClientId, compute_commit},
-    rand::{Rng, rng},
-    serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error as _, ser::Error as _},
+    rand::{rng, Rng},
+    serde::{de::Error as _, ser::Error as _, Deserialize, Deserializer, Serialize, Serializer},
     solana_sanitize::Sanitize,
     solana_serde_varint as serde_varint,
     std::{convert::TryInto, fmt, str::FromStr},
@@ -215,6 +215,10 @@ impl Version {
 
     pub fn client(&self) -> &ClientId {
         &self.client
+    }
+
+    pub fn set_client(&mut self, client: ClientId) {
+        self.client = client;
     }
 
     pub fn prerelease(&self) -> &Prerelease {

@@ -8,9 +8,13 @@ use {
         fail_entry_verification_broadcast_run::FailEntryVerificationBroadcastRun,
         standard_broadcast_run::StandardBroadcastRun,
     },
-    crate::cluster_nodes::{ClusterNodes, ClusterNodesCache},
+    crate::{
+        ShredReceiverAddresses,
+        cluster_nodes::{ClusterNodes, ClusterNodesCache},
+    },
     agave_votor::event::VotorEventSender,
     agave_xdp::xdp_retransmitter::XdpSender,
+    arc_swap::ArcSwap,
     crossbeam_channel::{Receiver, RecvError, RecvTimeoutError, Sender, unbounded},
     itertools::Itertools,
     solana_clock::Slot,
@@ -30,7 +34,7 @@ use {
     solana_time_utils::{AtomicInterval, timestamp},
     std::{
         collections::{HashMap, HashSet},
-        net::UdpSocket,
+        net::{SocketAddr, UdpSocket},
         sync::{
             Arc, Mutex, RwLock,
             atomic::{AtomicBool, Ordering},
@@ -524,7 +528,7 @@ pub fn broadcast_shreds(
         let bank_forks = bank_forks.read().unwrap();
         (bank_forks.root_bank(), bank_forks.working_bank())
     };
-    let packets: Vec<_> = shreds
+    let mut packets: Vec<_> = shreds
         .iter()
         .chunk_by(|shred| shred.slot())
         .into_iter()

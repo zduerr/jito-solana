@@ -21,10 +21,10 @@ use {
         net::SocketAddr,
         num::Saturating,
         sync::{
-            Arc, Mutex, RwLock,
             atomic::{AtomicBool, Ordering},
+            Arc, Mutex, RwLock,
         },
-        thread::{self, Builder, JoinHandle, sleep},
+        thread::{self, sleep, Builder, JoinHandle},
         time::{Duration, Instant},
     },
 };
@@ -536,20 +536,16 @@ impl SendTransactionService {
 mod test {
     use {
         super::*,
-        crate::test_utils::create_client_for_tests,
+        crate::test_utils::{create_client_for_tests, create_test_cluster_info},
         crossbeam_channel::{bounded, unbounded},
         solana_account::AccountSharedData,
         solana_genesis_config::create_genesis_config,
-        solana_gossip::{cluster_info::ClusterInfo, contact_info::ContactInfo, socketaddr},
-        solana_keypair::Keypair,
-        solana_net_utils::SocketAddrSpace,
         solana_nonce::{self as nonce, state::DurableNonce},
         solana_pubkey::Pubkey,
         solana_signer::Signer,
         solana_system_interface::program as system_program,
         solana_system_transaction as system_transaction,
-        solana_time_utils::timestamp,
-        std::{net::Ipv4Addr, ops::Sub},
+        std::ops::Sub,
         tokio::runtime::Handle,
     };
 
@@ -562,7 +558,7 @@ mod test {
         let (sender, receiver) = unbounded();
 
         let client =
-            create_client_for_tests(Handle::current(), "127.0.0.1:0".parse().unwrap(), None, 1);
+            create_client_for_tests(Handle::current(), create_test_cluster_info(), None, 1);
 
         let send_transaction_service = SendTransactionService::new(
             &bank_forks,
@@ -598,18 +594,9 @@ mod test {
             last_sent_time: None,
         };
 
-        let cluster_info = Arc::new({
-            let keypair = Arc::new(Keypair::new());
-            let contact_info = ContactInfo::new_with_socketaddr(
-                &keypair.pubkey(),
-                &socketaddr!(Ipv4Addr::LOCALHOST, 1234),
-            );
-            ClusterInfo::new(contact_info, keypair, SocketAddrSpace::Unspecified)
-        });
-
         let exit = Arc::new(AtomicBool::new(false));
         let client =
-            create_client_for_tests(Handle::current(), "127.0.0.1:0".parse().unwrap(), None, 1);
+            create_client_for_tests(Handle::current(), create_test_cluster_info(), None, 1);
         let _send_transaction_service = SendTransactionService::new(
             &bank_forks,
             receiver,
@@ -722,7 +709,7 @@ mod test {
 
         let client = create_client_for_tests(
             Handle::current(),
-            "127.0.0.1:0".parse().unwrap(),
+            create_test_cluster_info(),
             config.tpu_peers.clone(),
             leader_forward_count,
         );
@@ -1011,7 +998,7 @@ mod test {
         let stats = SendTransactionServiceStats::default();
         let client = create_client_for_tests(
             Handle::current(),
-            "127.0.0.1:0".parse().unwrap(),
+            create_test_cluster_info(),
             config.tpu_peers.clone(),
             leader_forward_count,
         );

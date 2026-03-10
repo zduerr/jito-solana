@@ -366,7 +366,7 @@ impl VoteWorker {
         slot_metrics_tracker: &mut LeaderSlotMetricsTracker,
     ) -> ProcessTransactionsSummary {
         let (mut process_transactions_summary, process_transactions_us) = measure_us!(
-            Self::process_transactions(&self.consumer, bank, sanitized_transactions)
+            Self::process_transactions(&self.consumer, bank, sanitized_transactions, &self.bundle_account_locker)
         );
         slot_metrics_tracker.increment_process_transactions_us(process_transactions_us);
         banking_stage_stats
@@ -418,9 +418,10 @@ impl VoteWorker {
         consumer: &Consumer,
         bank: &Bank,
         transactions: &[impl TransactionWithMeta],
+        bundle_account_locker: &BundleAccountLocker,
     ) -> ProcessTransactionsSummary {
         let process_transaction_batch_output =
-            consumer.process_and_record_transactions(bank, transactions, &self.bundle_account_locker,
+            consumer.process_and_record_transactions(bank, transactions, bundle_account_locker,
                 false,);
 
         let ProcessTransactionBatchOutput {
@@ -792,7 +793,7 @@ mod tests {
         )]);
 
         // Process some transactions on a bank that hasn't finished.
-        let summary = VoteWorker::process_transactions(&consumer, &bank, &transactions);
+        let summary = VoteWorker::process_transactions(&consumer, &bank, &transactions, &BundleAccountLocker::default());
 
         // Assert - Transaction were prcoessed.
         assert!(summary.transaction_counts.committed_transactions_count.0 > 0);

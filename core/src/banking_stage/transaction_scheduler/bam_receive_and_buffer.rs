@@ -138,6 +138,12 @@ impl BamReceiveAndBuffer {
         shared_leader_state: Option<SharedLeaderState>,
         blacklisted_accounts: HashSet<Pubkey>,
     ) {
+        let sigverify_thread_pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .thread_name(|i| format!("bamSigVer{i:02}"))
+            .build()
+            .expect("new rayon threadpool");
+
         let mut last_metrics_report = Instant::now();
         let mut metrics = BamReceiveAndBufferMetrics::default();
         let mut stats = ReceivingStats::default();
@@ -182,6 +188,7 @@ impl BamReceiveAndBuffer {
                 .unwrap_or_else(|| bank_forks.read().unwrap().working_bank().slot());
 
             let (deserialize_stats, duration_us) = measure_us!(Self::batch_verify(
+                &sigverify_thread_pool,
                 &recv_buffer,
                 current_slot,
                 &mut metrics,
@@ -296,6 +303,9 @@ impl BamReceiveAndBuffer {
         let enable_static_instruction_limit = root_bank
             .feature_set
             .is_active(&agave_feature_set::static_instruction_limit::ID);
+        let enable_instruction_accounts_limit = root_bank
+            .feature_set
+            .is_active(&agave_feature_set::limit_instruction_accounts::ID);
         let mut cost: u64 = 0;
         let mut txns_max_age = SmallVec::with_capacity(verified_batch.len());
 
@@ -319,6 +329,7 @@ impl BamReceiveAndBuffer {
             let Ok(view) = SanitizedTransactionView::try_new_sanitized(
                 verified_packet,
                 enable_static_instruction_limit,
+                enable_instruction_accounts_limit,
             ) else {
                 return (
                     Err(Reason::DeserializationError(
@@ -647,6 +658,7 @@ impl BamReceiveAndBuffer {
     }
 
     fn batch_verify(
+        sigverify_thread_pool: &rayon::ThreadPool,
         atomic_txn_batches: &[AtomicTxnBatch],
         current_slot: Slot,
         metrics: &mut BamReceiveAndBufferMetrics,
@@ -738,7 +750,7 @@ impl BamReceiveAndBuffer {
         });
 
         let mut verify_packet_batch_time_us = Measure::start("verify_packet_batch_time_us");
-        ed25519_verify(packet_batches, false, packet_count);
+        ed25519_verify(&sigverify_thread_pool, packet_batches, false, packet_count);
         verify_packet_batch_time_us.stop();
 
         metrics
@@ -1115,7 +1127,7 @@ mod tests {
             ..
         } = create_slow_genesis_config(u64::MAX);
 
-        let (_bank, bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (_bank, bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
         (bank_forks, mint_keypair)
     }
 
@@ -1175,10 +1187,15 @@ mod tests {
         current_slot: Slot,
         metrics: &mut BamReceiveAndBufferMetrics,
     ) -> (Vec<VerifyResult>, ReceivingStats) {
+        let thread_pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(1)
+            .build()
+            .expect("new rayon threadpool");
         let mut prevalidated = Vec::new();
         let mut packet_batches = Vec::new();
         let mut results = Vec::new();
         let stats = BamReceiveAndBuffer::batch_verify(
+            &thread_pool,
             batches,
             current_slot,
             metrics,

@@ -519,19 +519,17 @@ impl Consumer {
             attempted_processing_count: processing_results.len() as u64,
         };
 
-        let (processed_transactions, processing_results_to_transactions_us) = measure_us!(
-            processing_results
-                .iter()
-                .zip(batch.sanitized_transactions())
-                .filter_map(|(processing_result, tx)| {
-                    if processing_result.was_processed() {
-                        Some(tx.to_versioned_transaction())
-                    } else {
-                        None
-                    }
-                })
-                .collect_vec()
-        );
+        let processed_transactions = processing_results
+            .iter()
+            .zip(batch.sanitized_transactions())
+            .filter_map(|(processing_result, tx)| {
+                if processing_result.was_processed() {
+                    Some((tx.to_versioned_transaction(), tx))
+                } else {
+                    None
+                }
+            })
+            .collect_vec();
 
         let (freeze_lock, freeze_lock_us) = measure_us!(bank.freeze_lock());
         execute_and_commit_timings.freeze_lock_us = freeze_lock_us;
@@ -542,7 +540,7 @@ impl Consumer {
         // lists of transactions that are non-conflicting to shred out into entries. If we don't do
         // this, then blocks are rejected by consensus/replay.
         let (batches, prepare_record_transactions_us) = measure_us!(
-            Self::create_sequential_non_conflicting_batches(&mut reusables, processed_transactions)
+            Self::create_sequential_non_conflicting_batches(&mut reusables, processed_transactions.into_iter())
         );
         self.seq_not_conflict_batch_reusables.set(reusables);
         let hashes = batches
@@ -768,7 +766,7 @@ mod tests {
         solana_nonce_account::verify_nonce_account,
         solana_poh::record_channels::{RecordReceiver, record_channels},
         solana_pubkey::Pubkey,
-        solana_runtime::bank_forks::BankForks,
+        solana_runtime::{bank_forks::BankForks, prioritization_fee_cache::PrioritizationFeeCache},
         solana_runtime_transaction::runtime_transaction::RuntimeTransaction,
         solana_signer::Signer,
         solana_system_interface::{instruction as system_instruction, program as system_program},
@@ -1747,7 +1745,7 @@ mod tests {
             mint_keypair,
             ..
         } = create_slow_genesis_config(10_000);
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
 
         let pubkey = solana_pubkey::new_rand();
 
@@ -1773,7 +1771,7 @@ mod tests {
         let committer = Committer::new(
             None,
             replay_vote_sender,
-            Arc::new(PrioritizationFeeCache::new(0u64)),
+            Some(Arc::new(PrioritizationFeeCache::new(0u64))),
         );
         let consumer = Consumer::new(committer, recorder.clone(), QosService::new(1), None);
 
@@ -1813,7 +1811,7 @@ mod tests {
             mint_keypair,
             ..
         } = create_slow_genesis_config(lamports);
-        let (bank, _bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+        let (bank, _bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
         // set cost tracker limits to MAX so it will not filter out TXs
         bank.write_cost_tracker()
             .unwrap()

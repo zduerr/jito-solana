@@ -2,6 +2,7 @@
 
 use {
     crate::{
+        ShredReceiverAddresses,
         addr_cache::AddrCache,
         cluster_nodes::{
             ClusterNodes, ClusterNodesCache, DATA_PLANE_FANOUT, Error, MAX_NUM_TURBINE_HOPS,
@@ -10,6 +11,7 @@ use {
     agave_votor::event::VotorEvent,
     agave_votor_messages::migration::MigrationStatus,
     agave_xdp::xdp_retransmitter::XdpSender,
+    arc_swap::ArcSwap,
     crossbeam_channel::{Receiver, Sender, TryRecvError, TrySendError},
     lru::LruCache,
     rand::Rng,
@@ -489,9 +491,14 @@ fn retransmit_shred(
     let num_nodes = match socket {
         RetransmitSocket::Xdp(sender) => {
             let mut sent = num_addrs;
-            if num_addrs > 0
-                && let Err(e) = sender.try_send(key.index() as usize, addrs.to_vec(), shred.bytes)
+            let mut send_addrs =
+                Vec::with_capacity(num_addrs.saturating_add(shred_receiver_addresses.len()));
+            send_addrs.extend(addrs.iter().copied());
+            send_addrs.extend(shred_receiver_addresses.iter().copied());
+            if !send_addrs.is_empty()
+                && let Err(e) = sender.try_send(key.index() as usize, send_addrs, shred.bytes)
             {
+                // External shred receivers are intentionally not included in retransmit stats.
                 log::warn!("xdp channel full: {e:?}");
                 stats
                     .num_shreds_dropped_xdp_full
@@ -500,59 +507,25 @@ fn retransmit_shred(
             }
             sent
         }
-<<<<<<< HEAD
         RetransmitSocket::Socket(_) | RetransmitSocket::Multihomed { .. } => {
             let socket = socket.get_socket();
-            match multi_target_send(socket, shred, &addrs) {
-                Ok(()) => num_addrs,
-                Err(SendPktsError::IoError(ioerr, num_failed)) => {
-                    error!(
-                        "retransmit_to multi_target_send error: {ioerr:?}, \
-                         {num_failed}/{num_addrs} packets failed"
-                    );
-                    num_addrs - num_failed
-=======
-        Protocol::UDP => match socket {
-            RetransmitSocket::Xdp(sender) => {
-                let mut sent = num_addrs;
-                let mut send_addrs =
-                    Vec::with_capacity(num_addrs.saturating_add(shred_receiver_addresses.len()));
-                send_addrs.extend(addrs.iter().copied());
-                send_addrs.extend(shred_receiver_addresses.iter().copied());
-                if !send_addrs.is_empty() {
-                    // External shred receivers are intentionally not included in retransmit stats.
-                    if let Err(e) = sender.try_send(key.index() as usize, send_addrs, shred) {
-                        log::warn!("xdp channel full: {e:?}");
-                        stats
-                            .num_shreds_dropped_xdp_full
-                            .fetch_add(num_addrs, Ordering::Relaxed);
-                        sent = 0;
-                    }
-                }
-                sent
-            }
-            RetransmitSocket::Socket(_) | RetransmitSocket::Multihomed { .. } => {
-                let socket = socket.get_socket();
-                let mut all_addrs: SmallVec<
-                    [SocketAddr; 200 /* DATA_PLANE_FANOUT */ + 32 /* MAX_SHRED_RECEIVER_ADDRESSES */],
-                > = SmallVec::new();
-                let send_addrs = if shred_receiver_addresses.is_empty() {
-                    addrs.as_ref()
-                } else {
-                    all_addrs.extend(addrs.iter().copied());
-                    all_addrs.extend(shred_receiver_addresses.iter().copied());
-                    &all_addrs
-                };
-                match multi_target_send(socket, &shred, send_addrs) {
+            let mut send_addrs =
+                Vec::with_capacity(num_addrs.saturating_add(shred_receiver_addresses.len()));
+            send_addrs.extend(addrs.iter().copied());
+            send_addrs.extend(shred_receiver_addresses.iter().copied());
+            if send_addrs.is_empty() {
+                0
+            } else {
+                match multi_target_send(socket, shred, &send_addrs) {
                     Ok(()) => num_addrs,
                     Err(SendPktsError::IoError(ioerr, num_failed)) => {
+                        let num_failed = num_failed.min(num_addrs);
                         error!(
                             "retransmit_to multi_target_send error: {ioerr:?}, \
                              {num_failed}/{num_addrs} packets failed"
                         );
                         num_addrs - num_failed
                     }
->>>>>>> 43cfbf56de (Jito Patch)
                 }
             }
         }

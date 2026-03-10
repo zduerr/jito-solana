@@ -185,6 +185,9 @@ impl BundleStorage {
         let enable_static_instruction_limit = working_bank
             .feature_set
             .is_active(&agave_feature_set::static_instruction_limit::id());
+        let enable_instruction_accounts_limit = working_bank
+            .feature_set
+            .is_active(&agave_feature_set::limit_instruction_accounts::id());
         let transaction_account_lock_limit = working_bank.get_transaction_account_lock_limit();
 
         for (idx, packet) in batch.iter().enumerate() {
@@ -200,6 +203,7 @@ impl BundleStorage {
                         root_bank,
                         working_bank,
                         enable_static_instruction_limit,
+                        enable_instruction_accounts_limit,
                         transaction_account_lock_limit,
                         blacklisted_accounts,
                     ) {

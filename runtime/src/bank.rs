@@ -55,8 +55,8 @@ use {
         stake_account::StakeAccount,
         stake_history::StakeHistory as CowStakeHistory,
         stake_weighted_timestamp::{
+            calculate_stake_weighted_timestamp, MaxAllowableDrift,
             MAX_ALLOWABLE_DRIFT_PERCENTAGE_FAST, MAX_ALLOWABLE_DRIFT_PERCENTAGE_SLOW_V2,
-            MaxAllowableDrift, calculate_stake_weighted_timestamp,
         },
         stakes::{DeserializableStakes, SerdeStakesToStakeFormat, Stakes, StakesCache},
         status_cache::{SlotDelta, StatusCache},
@@ -65,8 +65,8 @@ use {
     accounts_lt_hash::{CacheValue as AccountsLtHashCacheValue, Stats as AccountsLtHashStats},
     agave_bls_cert_verify::cert_verify::{self, Error as CertVerifyError},
     agave_feature_set::{
-        self as feature_set, FeatureSet, increase_cpi_account_info_limit,
-        raise_cpi_nesting_limit_to_8, relax_programdata_account_check_migration,
+        self as feature_set, increase_cpi_account_info_limit, raise_cpi_nesting_limit_to_8,
+        relax_programdata_account_check_migration, FeatureSet,
     },
     agave_precompiles::{get_precompile, get_precompiles, is_precompile},
     agave_reserved_account_keys::ReservedAccountKeys,
@@ -85,16 +85,14 @@ use {
     rayon::{ThreadPool, ThreadPoolBuilder},
     serde::{Deserialize, Serialize},
     solana_account::{
-        Account, AccountSharedData, InheritableAccountFields, ReadableAccount, WritableAccount,
-        create_account_shared_data_with_fields as create_account, from_account,
+        create_account_shared_data_with_fields as create_account, from_account, Account,
+        AccountSharedData, InheritableAccountFields, ReadableAccount, WritableAccount,
     },
     solana_accounts_db::{
         account_locks::validate_account_locks,
         account_storage_entry::AccountStorageEntry,
         accounts::{AccountAddressFilter, Accounts, PubkeyAccountSlot},
-        accounts_db::{
-            AccountStorageEntry, AccountsDb, AccountsDbConfig, ACCOUNTS_DB_CONFIG_FOR_BENCHMARKS,
-        },
+        accounts_db::{AccountsDb, AccountsDbConfig, ACCOUNTS_DB_CONFIG_FOR_BENCHMARKS},
         accounts_hash::AccountsLtHash,
         accounts_index::{IndexKey, ScanConfig, ScanResult},
         accounts_update_notifier_interface::AccountsUpdateNotifier,
@@ -105,8 +103,8 @@ use {
     },
     solana_builtins::{BUILTINS, STATELESS_BUILTINS},
     solana_clock::{
-        BankId, Epoch, INITIAL_RENT_EPOCH, MAX_PROCESSING_AGE, MAX_TRANSACTION_FORWARDING_DELAY,
-        Slot, SlotIndex, UnixTimestamp,
+        BankId, Epoch, Slot, SlotIndex, UnixTimestamp, INITIAL_RENT_EPOCH, MAX_PROCESSING_AGE,
+        MAX_TRANSACTION_FORWARDING_DELAY,
     },
     solana_cluster_type::ClusterType,
     solana_compute_budget::compute_budget::ComputeBudget,
@@ -125,7 +123,7 @@ use {
     solana_keypair::Keypair,
     solana_lattice_hash::lt_hash::LtHash,
     solana_measure::{measure::Measure, measure_time, measure_us},
-    solana_message::{AccountKeys, SanitizedMessage, inner_instruction::InnerInstructions},
+    solana_message::{inner_instruction::InnerInstructions, AccountKeys, SanitizedMessage},
     solana_packet::PACKET_DATA_SIZE,
     solana_precompile_error::PrecompileError,
     solana_program_runtime::{
@@ -169,13 +167,13 @@ use {
     solana_svm_timings::{ExecuteTimingType, ExecuteTimings},
     solana_svm_transaction::svm_message::SVMMessage,
     solana_system_transaction as system_transaction,
-    solana_sysvar::{self as sysvar, SysvarSerialize, last_restart_slot::LastRestartSlot},
+    solana_sysvar::{self as sysvar, last_restart_slot::LastRestartSlot, SysvarSerialize},
     solana_sysvar_id::SysvarId,
     solana_time_utils::years_as_slots,
     solana_transaction::{
-        Transaction, TransactionVerificationMode,
-        sanitized::{MAX_TX_ACCOUNT_LOCKS, MessageHash, SanitizedTransaction},
+        sanitized::{MessageHash, SanitizedTransaction, MAX_TX_ACCOUNT_LOCKS},
         versioned::VersionedTransaction,
+        Transaction, TransactionVerificationMode,
     },
     solana_transaction_context::{
         transaction::TransactionReturnData, transaction_accounts::KeyedAccountSharedData,
@@ -193,11 +191,11 @@ use {
         path::PathBuf,
         slice,
         sync::{
-            Arc, LazyLock, LockResult, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak,
             atomic::{
                 AtomicBool, AtomicI64, AtomicU64,
                 Ordering::{self, AcqRel, Acquire, Relaxed},
             },
+            Arc, LazyLock, LockResult, Mutex, RwLock, RwLockReadGuard, RwLockWriteGuard, Weak,
         },
         time::{Duration, Instant},
         vec,
@@ -208,7 +206,7 @@ use {
     dashmap::DashSet,
     rayon::iter::{IntoParallelRefIterator, ParallelIterator},
     solana_nonce as nonce,
-    solana_nonce_account::{SystemAccountKind, get_system_account_kind},
+    solana_nonce_account::{get_system_account_kind, SystemAccountKind},
     solana_program_runtime::sysvar_cache::SysvarCache,
 };
 pub use {partitioned_epoch_rewards::KeyedRewardsAndNumPartitions, solana_reward_info::RewardType};
@@ -1458,10 +1456,9 @@ impl Bank {
             new.update_last_restart_slot()
         });
 
-        let (_, fill_sysvar_cache_time_us) = measure_us!(
-            new.transaction_processor
-                .fill_missing_sysvar_cache_entries(&new)
-        );
+        let (_, fill_sysvar_cache_time_us) = measure_us!(new
+            .transaction_processor
+            .fill_missing_sysvar_cache_entries(&new));
 
         let (num_accounts_modified_this_slot, populate_cache_for_accounts_lt_hash_us) =
             measure_us!({
@@ -1704,8 +1701,8 @@ impl Bank {
 
         // Apply stake rewards and commission using new snapshots.
         let cached_vote_accounts = self.get_cached_vote_accounts(rewarded_epoch, &vote_accounts);
-        let (rewards_calculation, update_rewards_with_thread_pool_time_us) =
-            measure_us!(self.calculate_rewards(
+        let (rewards_calculation, update_rewards_with_thread_pool_time_us) = measure_us!(self
+            .calculate_rewards(
                 &stake_history,
                 stake_delegations,
                 cached_vote_accounts,
@@ -1733,12 +1730,10 @@ impl Bank {
     ) {
         let epoch = self.epoch();
         let slot = self.slot();
-        let (thread_pool, thread_pool_time_us) = measure_us!(
-            ThreadPoolBuilder::new()
-                .thread_name(|i| format!("solBnkNewEpch{i:02}"))
-                .build()
-                .expect("new rayon threadpool")
-        );
+        let (thread_pool, thread_pool_time_us) = measure_us!(ThreadPoolBuilder::new()
+            .thread_name(|i| format!("solBnkNewEpch{i:02}"))
+            .build()
+            .expect("new rayon threadpool"));
 
         let (_, apply_feature_activations_time_us) = measure_us!(
             thread_pool.install(|| { self.compute_and_apply_new_feature_activations() })
@@ -1872,18 +1867,19 @@ impl Bank {
         // Note that we are disabling the read cache while we populate the stakes cache.
         // The stakes accounts will not be expected to be loaded again.
         // If we populate the read cache with these loads, then we'll just soon have to evict these.
-        let (stakes, stakes_time) = measure_time!(
-            Stakes::load_from_deserialized_delegations(fields.stakes, |pubkey| {
+        let (stakes, stakes_time) = measure_time!(Stakes::load_from_deserialized_delegations(
+            fields.stakes,
+            |pubkey| {
                 let (account, _slot) = bank_rc
                     .accounts
                     .load_with_fixed_root_do_not_populate_read_cache(&ancestors, pubkey)?;
                 Some(account)
-            })
-            .expect(
-                "Stakes cache is inconsistent with accounts-db. This can indicate a corrupted \
+            }
+        )
+        .expect(
+            "Stakes cache is inconsistent with accounts-db. This can indicate a corrupted \
                  snapshot or bugs in cached accounts or accounts-db.",
-            )
-        );
+        ));
         info!("Loading Stakes took: {stakes_time}");
         assert!(
             fields.versioned_epoch_stakes.is_empty(),
@@ -3621,7 +3617,7 @@ impl Bank {
                 &mut TransactionErrorMetrics::default(),
                 TransactionProcessingConfig {
                     account_overrides: Some(&account_overrides),
-                    check_program_modification_slot: self.check_program_modification_slot,
+                    check_program_deployment_slot: self.check_program_deployment_slot,
                     log_messages_bytes_limit,
                     limit_to_load_programs: true,
                     recording_config: ExecutionRecordingConfig {
@@ -5092,7 +5088,7 @@ impl Bank {
 
         let accounts_lt_hash_checksum = {
             let accounts_lt_hash = &*self.accounts_lt_hash.lock().unwrap();
-            let lt_hash_bytes = bytemuck::must_cast_slice(&accounts_lt_hash.0.0);
+            let lt_hash_bytes = bytemuck::must_cast_slice(&accounts_lt_hash.0 .0);
             hash = hashv(&[hash.as_ref(), lt_hash_bytes]);
             accounts_lt_hash.0.checksum()
         };
@@ -6707,7 +6703,7 @@ pub mod test_utils {
     use {
         super::Bank,
         crate::installed_scheduler_pool::BankWithScheduler,
-        solana_account::{ReadableAccount, WritableAccount, state_traits::StateMut},
+        solana_account::{state_traits::StateMut, ReadableAccount, WritableAccount},
         solana_instruction::error::LamportsError,
         solana_pubkey::Pubkey,
         solana_sha256_hasher::hashv,

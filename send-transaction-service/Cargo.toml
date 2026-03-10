@@ -14,7 +14,7 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [features]
 agave-unstable-api = []
-dev-context-only-utils = ["solana-net-utils"]
+dev-context-only-utils = ["solana-net-utils", "solana-signer"]
 
 [dependencies]
 async-trait = { workspace = true }
@@ -30,6 +30,7 @@ solana-keypair = { workspace = true }
 solana-measure = { workspace = true }
 solana-metrics = { workspace = true }
 solana-net-utils = { workspace = true, optional = true }
+solana-signer = { workspace = true, optional = true }
 solana-nonce-account = { workspace = true }
 solana-pubkey = { workspace = true }
 solana-runtime = { workspace = true }

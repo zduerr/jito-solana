@@ -11,7 +11,6 @@ use {
     crate::{
         bam_dependencies::BamConnectionState,
         banking_stage::{
-            TOTAL_BUFFERED_PACKETS,
             consume_worker::ConsumeWorkerMetrics,
             consumer::Consumer,
             decision_maker::{BufferedPacketsDecision, DecisionMaker},
@@ -19,6 +18,7 @@ use {
                 receive_and_buffer::ReceivingStats, transaction_priority_id::TransactionPriorityId,
                 transaction_state_container::StateContainer,
             },
+            TOTAL_BUFFERED_PACKETS,
         },
         validator::SchedulerPacing,
     },
@@ -31,7 +31,7 @@ use {
         num::{NonZeroU64, Saturating},
         sync::{
             atomic::{AtomicBool, AtomicU8, Ordering},
-            Arc, RwLock,
+            Arc,
         },
         time::{Duration, Instant},
     },
@@ -111,17 +111,43 @@ where
         bam_controller: bool,
         bam_enabled: Arc<AtomicU8>,
     ) -> Self {
+        Self::new_with_metrics_id(
+            0,
+            exit,
+            config,
+            decision_maker,
+            receive_and_buffer,
+            sharable_banks,
+            scheduler,
+            worker_metrics,
+            bam_controller,
+            bam_enabled,
+        )
+    }
+
+    pub fn new_with_metrics_id(
+        metrics_id: u32,
+        exit: Arc<AtomicBool>,
+        config: SchedulerConfig,
+        decision_maker: DecisionMaker,
+        receive_and_buffer: R,
+        sharable_banks: SharableBanks,
+        scheduler: S,
+        worker_metrics: Vec<Arc<ConsumeWorkerMetrics>>,
+        bam_controller: bool,
+        bam_enabled: Arc<AtomicU8>,
+    ) -> Self {
         SchedulerController::new_with_metrics(
             exit,
             config,
             decision_maker,
             receive_and_buffer,
-            bank_forks,
+            sharable_banks,
             scheduler,
-            SchedulerCountMetrics::default(),
-            SchedulerTimingMetrics::default(),
+            SchedulerCountMetrics::new(metrics_id),
+            SchedulerTimingMetrics::new(metrics_id),
             worker_metrics,
-            SchedulingDetails::default(),
+            SchedulingDetails::new(metrics_id),
             bam_controller,
             bam_enabled,
         )
@@ -133,7 +159,7 @@ where
         config: SchedulerConfig,
         decision_maker: DecisionMaker,
         receive_and_buffer: R,
-        bank_forks: Arc<RwLock<BankForks>>,
+        sharable_banks: SharableBanks,
         scheduler: S,
         count_metrics: SchedulerCountMetrics,
         timing_metrics: SchedulerTimingMetrics,
@@ -153,9 +179,11 @@ where
             count_metrics,
             timing_metrics,
             worker_metrics,
-            scheduling_details: SchedulingDetails::default(),
+            scheduling_details,
             recheck_cursor: None,
             recheck_chunk: Vec::with_capacity(CHECK_CHUNK),
+            bam_controller,
+            bam_enabled,
         }
     }
 
@@ -221,7 +249,7 @@ where
                 });
             }
 
-            self.receive_completed()?;
+            self.receive_completed(&decision)?;
             let scheduled = self.process_transactions(&decision, cost_pacer.as_ref(), &now)?;
             if scheduled == 0 {
                 let (_, clean_time_us) = measure_us!(self.incremental_recheck());
@@ -261,24 +289,22 @@ where
     ) -> Result<usize, SchedulerError> {
         let scheduled = match decision {
             BufferedPacketsDecision::Consume(bank) => {
-if !self.scheduling_enabled() {
-    return Ok(());
-}
+                if !self.scheduling_enabled() {
+                    return Ok(0);
+                }
                 let scheduling_budget = cost_pacer
                     .expect("cost pacer must be set for Consume")
                     .scheduling_budget(now);
-                let (scheduling_summary, schedule_time_us) = measure_us!(
-                    self.scheduler.schedule(
-                        &mut self.container,
-                        scheduling_budget,
-                        bank.feature_set
-                            .is_active(&agave_feature_set::relax_intrabatch_account_locks::ID),
-                        |txs, results| {
-                            Self::pre_graph_filter(txs, results, bank, MAX_PROCESSING_AGE)
-                        },
-                        |_| PreLockFilterAction::AttemptToSchedule // no pre-lock filter for now
-                    )?
-                );
+                let (scheduling_summary, schedule_time_us) = measure_us!(self.scheduler.schedule(
+                    &mut self.container,
+                    scheduling_budget,
+                    bank.feature_set
+                        .is_active(&agave_feature_set::relax_intrabatch_account_locks::ID),
+                    |txs, results| {
+                        Self::pre_graph_filter(txs, results, bank, MAX_PROCESSING_AGE)
+                    },
+                    |_| PreLockFilterAction::AttemptToSchedule // no pre-lock filter for now
+                )?);
 
                 self.count_metrics.update(|count_metrics| {
                     count_metrics.num_scheduled += scheduling_summary.num_scheduled;
@@ -551,7 +577,7 @@ mod tests {
         solana_keypair::Keypair,
         solana_ledger::genesis_utils::GenesisConfigInfo,
         solana_message::Message,
-        solana_perf::packet::{NUM_PACKETS, PacketBatch, to_packet_batches},
+        solana_perf::packet::{to_packet_batches, PacketBatch, NUM_PACKETS},
         solana_poh::poh_recorder::{LeaderState, SharedLeaderState},
         solana_pubkey::Pubkey,
         solana_runtime::{bank::Bank, bank_forks::BankForks},
@@ -714,27 +740,28 @@ mod tests {
             .unwrap_or_default()
         {}
         let now = Instant::now();
-        assert!(
-            scheduler_controller
-                .process_transactions(
-                    &decision,
-                    Some(&CostPacer {
-                        block_limit: u64::MAX,
-                        shared_block_cost: SharedBlockCost::new(0),
-                        detection_time: now.checked_sub(Duration::from_millis(400)).unwrap(),
-                        fill_time: Some(Duration::from_millis(300)),
-                    }),
-                    &now
-                )
-                .is_ok()
-        );
+        assert!(scheduler_controller
+            .process_transactions(
+                &decision,
+                Some(&CostPacer {
+                    block_limit: u64::MAX,
+                    shared_block_cost: SharedBlockCost::new(0),
+                    detection_time: now.checked_sub(Duration::from_millis(400)).unwrap(),
+                    fill_time: Some(Duration::from_millis(300)),
+                }),
+                &now
+            )
+            .is_ok());
     }
 
     #[test]
     #[should_panic(expected = "batch id 0 is not being tracked")]
     fn test_unexpected_batch_id() {
-        let (test_frame, mut scheduler_controller) =
-            create_test_frame(1, test_create_transaction_view_receive_and_buffer, BundleAccountLocker::default(),);
+        let (test_frame, mut scheduler_controller) = create_test_frame(
+            1,
+            test_create_transaction_view_receive_and_buffer,
+            BundleAccountLocker::default(),
+        );
         let TestFrame {
             finished_consume_work_sender,
             ..

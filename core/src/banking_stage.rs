@@ -17,7 +17,7 @@ use {
                 bam_scheduler::BamScheduler,
                 prio_graph_scheduler::PrioGraphScheduler,
                 scheduler_controller::{
-                    DEFAULT_SCHEDULER_PACING_FILL_TIME_MILLIS, SchedulerConfig, SchedulerController,
+                    SchedulerConfig, SchedulerController, DEFAULT_SCHEDULER_PACING_FILL_TIME_MILLIS,
                 },
                 scheduler_error::SchedulerError,
             },
@@ -26,7 +26,6 @@ use {
         validator::BlockProductionMethod,
     },
     agave_banking_stage_ingress_types::BankingPacketReceiver,
-    futures::{StreamExt, stream::FuturesUnordered},
     ahash::HashSet,
     consumer::TipProcessingDependencies,
     crossbeam_channel::{unbounded, Receiver, Sender},
@@ -50,8 +49,8 @@ use {
         num::{NonZeroU64, NonZeroUsize, Saturating},
         ops::Deref,
         sync::{
-            Arc, RwLock,
             atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+            Arc, RwLock,
         },
         thread::{self, Builder, JoinHandle},
         time::Duration,
@@ -384,6 +383,10 @@ pub struct BankingStage {
     committer: Committer,
     log_messages_bytes_limit: Option<usize>,
     threads: FuturesUnordered<NamedTask<std::thread::Result<()>>>,
+    bundle_account_locker: BundleAccountLocker,
+    blacklisted_accounts: HashSet<Pubkey>,
+    tip_processing_dependencies: Option<TipProcessingDependencies>,
+    bam_dependencies: Option<BamDependencies>,
 }
 
 impl BankingStage {
@@ -429,6 +432,10 @@ impl BankingStage {
             committer,
             log_messages_bytes_limit,
             threads: FuturesUnordered::default(),
+            bundle_account_locker,
+            blacklisted_accounts,
+            tip_processing_dependencies,
+            bam_dependencies,
         };
 
         // Spawn the manager thread.
@@ -445,10 +452,6 @@ impl BankingStage {
                         num_workers,
                         config: scheduler_config,
                     },
-                    bundle_account_locker,
-                    blacklisted_accounts,
-                    tip_processing_dependencies,
-                    bam_dependencies,
                 ))
             })
             .unwrap();
@@ -459,10 +462,10 @@ impl BankingStage {
         }
     }
 
-    async fn run(mut self, initial_args: BankingControlMsg, bundle_account_locker: BundleAccountLocker,
-        blacklisted_accounts: HashSet<Pubkey>,
-        tip_processing_dependencies: Option<TipProcessingDependencies>,
-        bam_dependencies: Option<BamDependencies>,) -> std::thread::Result<()> {
+    async fn run(
+        mut self,
+        initial_args: BankingControlMsg,
+    ) -> std::thread::Result<()> {
         self.spawn_scheduler(initial_args).unwrap();
 
         loop {
@@ -471,7 +474,7 @@ impl BankingStage {
 
                 _ = self.banking_shutdown_signal.cancelled() => break,
                 Some(args) = self.banking_control_receiver.recv() => {
-                    if self.cycle_threads(args, blacklisted_accounts.clone(), bundle_account_locker.clone(), tip_processing_dependencies.clone(), bam_dependencies.clone().await.is_err() {
+                    if self.cycle_threads(args).await.is_err() {
                         self.cycle_threads_fallback().await.unwrap();
                     }
                 },
@@ -494,10 +497,10 @@ impl BankingStage {
         Ok(())
     }
 
-    async fn cycle_threads(&mut self, args: BankingControlMs, blacklisted_accounts: HashSet<Pubkey>,
-        bundle_account_locker: BundleAccountLocker,
-        tip_processing_dependencies: Option<TipProcessingDependencies>,
-        bam_dependencies: Option<BamDependencies>,) -> Result<(), ()> {
+    async fn cycle_threads(
+        &mut self,
+        args: BankingControlMsg,
+    ) -> Result<(), ()> {
         // Shutdown all current threads.
         self.worker_exit_signal.store(true, Ordering::Relaxed);
         while let Some((name, res)) = self.threads.next().await {
@@ -521,14 +524,13 @@ impl BankingStage {
             block_production_method: BlockProductionMethod::default(),
             num_workers: BankingStage::default_num_workers(),
             config: SchedulerConfig::default(),
-        })
-        .await
+        }).await
     }
 
-    fn spawn_scheduler(&mut self, args: BankingControlMsg, bundle_account_locker: BundleAccountLocker,
-        blacklisted_accounts: HashSet<Pubkey>,
-        tip_processing_dependencies: Option<TipProcessingDependencies>,
-        bam_dependencies: Option<BamDependencies>,) -> Result<(), ()> {
+    fn spawn_scheduler(
+        &mut self,
+        args: BankingControlMsg,
+    ) -> Result<(), ()> {
         let threads = (match args {
             BankingControlMsg::Internal {
                 block_production_method,
@@ -562,11 +564,11 @@ impl BankingStage {
         use_greedy_scheduler: bool,
         num_workers: NonZeroUsize,
         scheduler_config: SchedulerConfig,
-        bundle_account_locker: BundleAccountLocker,
-        blacklisted_accounts: HashSet<Pubkey>,
-        tip_processing_dependencies: Option<TipProcessingDependencies>,
-        bam_dependencies: Option<BamDependencies>,
     ) -> Result<Vec<JoinHandle<()>>, ()> {
+        let bundle_account_locker = self.bundle_account_locker.clone();
+        let blacklisted_accounts = self.blacklisted_accounts.clone();
+        let tip_processing_dependencies = self.tip_processing_dependencies.clone();
+        let bam_dependencies = self.bam_dependencies.clone();
         info!("Spawning internal central scheduler");
         // Toggling unified scheduler into the disabled state should always be a safe and idempotent
         // operation.
@@ -638,7 +640,6 @@ impl BankingStage {
             ($scheduler:ident) => {
                 let exit = exit.clone();
                 let shutdown_signal = self.banking_shutdown_signal.clone();
-                let bank_forks = self.bank_forks.clone();
                 let decision_maker = decision_maker.clone();
                 let worker_metrics = worker_metrics.clone();
                 let bam_enabled = bam_enabled.clone();
@@ -762,13 +763,14 @@ impl BankingStage {
                             blacklisted_accounts.clone(),
                         );
 
-                        let scheduler_controller = SchedulerController::new_with_metrics_id(
+                        let bam_sharable_banks = bam_scheduler_bank_forks.read().unwrap().sharable_banks();
+                        let mut scheduler_controller = SchedulerController::new_with_metrics_id(
                             BAM_METRICS_ID_OFFSET,
                             bam_scheduler_exit,
                             scheduler_config,
                             decision_maker.clone(),
                             receive_and_buffer,
-                            bam_scheduler_bank_forks.clone(),
+                            bam_sharable_banks,
                             scheduler,
                             worker_metrics,
                             true,
@@ -873,8 +875,8 @@ mod external {
                 progress_tracker,
                 workers,
             }: AgaveSession,
-            bundle_account_locker: BundleAccountLocker,
         ) -> Result<Vec<JoinHandle<()>>, ()> {
+            let bundle_account_locker = self.bundle_account_locker.clone();
             info!("Spawning external scheduler");
             // Toggling unified scheduler into the disabled state should always be a safe and
             // idempotent operation.
@@ -1060,13 +1062,13 @@ mod tests {
         solana_ledger::{
             blockstore::Blockstore,
             genesis_utils::{
-                GenesisConfigInfo, create_genesis_config, create_genesis_config_with_leader,
+                create_genesis_config, create_genesis_config_with_leader, GenesisConfigInfo,
             },
             get_tmp_ledger_path_auto_delete,
         },
         solana_perf::packet::to_packet_batches,
         solana_poh::{
-            poh_recorder::{PohRecorderError, create_test_recorder},
+            poh_recorder::{create_test_recorder, PohRecorderError},
             record_channels::record_channels,
             transaction_recorder::RecordTransactionsSummary,
         },
@@ -1137,6 +1139,7 @@ mod tests {
             replay_vote_sender,
             None,
             bank_forks,
+            None,
             HashSet::default(),
             BundleAccountLocker::default(),
             None,
@@ -1204,6 +1207,7 @@ mod tests {
             replay_vote_sender,
             None,
             bank_forks,
+            None,
             HashSet::default(),
             BundleAccountLocker::default(),
             None,
@@ -1225,11 +1229,9 @@ mod tests {
             .collect();
         trace!("done");
         assert_eq!(entries.len(), genesis_config.ticks_per_slot as usize);
-        assert!(
-            entries
-                .verify(&start_hash, &entry::thread_pool_for_tests())
-                .status()
-        );
+        assert!(entries
+            .verify(&start_hash, &entry::thread_pool_for_tests())
+            .status());
         assert_eq!(entries[entries.len() - 1].hash, bank.last_blockhash());
     }
 
@@ -1283,6 +1285,7 @@ mod tests {
             replay_vote_sender,
             None,
             bank_forks, // keep a local-copy of bank-forks so worker threads do not lose weak access to bank-forks
+            None,
             HashSet::default(),
             BundleAccountLocker::default(),
             None,
@@ -1350,11 +1353,9 @@ mod tests {
                 .map(|(_bank, (entry, _tick_height))| entry),
         );
 
-        assert!(
-            entries
-                .verify(&blockhash, &entry::thread_pool_for_tests())
-                .status()
-        );
+        assert!(entries
+            .verify(&blockhash, &entry::thread_pool_for_tests())
+            .status());
         for entry in entries {
             bank.process_entry_transactions(entry.transactions)
                 .iter()
@@ -1440,6 +1441,7 @@ mod tests {
                 replay_vote_sender,
                 None,
                 bank_forks,
+                None,
                 HashSet::default(),
                 BundleAccountLocker::default(),
                 None,
@@ -1606,6 +1608,7 @@ mod tests {
             replay_vote_sender,
             None,
             bank_forks,
+            None,
             HashSet::default(),
             BundleAccountLocker::default(),
             None,
@@ -1695,7 +1698,7 @@ mod tests {
                 mint_keypair,
                 ..
             } = create_slow_genesis_config(10);
-            let (bank, bank_forks) = Bank::new_no_wallclock_throttle_for_tests(&genesis_config);
+            let (bank, bank_forks) = Bank::new_with_bank_forks_for_tests(&genesis_config);
             let start_hash = bank.last_blockhash();
             let banking_tracer = BankingTracer::new_disabled();
             let Channels {
@@ -1705,7 +1708,7 @@ mod tests {
                 tpu_vote_receiver,
                 gossip_vote_sender,
                 gossip_vote_receiver,
-            } = banking_tracer.create_channels(false);
+            } = banking_tracer.create_channels();
 
             let ledger_path = get_tmp_ledger_path_auto_delete!();
             {
@@ -1740,7 +1743,7 @@ mod tests {
                     replay_vote_sender,
                     None,
                     bank_forks.clone(), // keep a local-copy of bank-forks so worker threads do not lose weak access to bank-forks
-                    Arc::new(PrioritizationFeeCache::new(0u64)),
+                    Some(Arc::new(PrioritizationFeeCache::new(0u64))),
                     HashSet::from_iter([blacklisted_keypair.pubkey()]),
                     BundleAccountLocker::default(),
                     None,

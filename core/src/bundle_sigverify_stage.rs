@@ -1,6 +1,7 @@
 use {
     crate::packet_bundle::{PacketBundle, VerifiedPacketBundle},
     crossbeam_channel::{Receiver, RecvTimeoutError, Sender},
+    rayon::ThreadPool,
     solana_perf::sigverify::ed25519_verify,
     std::{
         sync::{
@@ -18,11 +19,12 @@ pub struct BundleSigverifyStage {
 
 impl BundleSigverifyStage {
     pub fn new(
+        thread_pool: Arc<ThreadPool>,
         receiver: Receiver<Vec<PacketBundle>>,
         sender: Sender<VerifiedPacketBundle>,
         exit: Arc<AtomicBool>,
     ) -> Self {
-        let thread = spawn(move || Self::sigverify_service(receiver, sender, exit));
+        let thread = spawn(move || Self::sigverify_service(thread_pool, receiver, sender, exit));
         Self { thread }
     }
 
@@ -31,18 +33,19 @@ impl BundleSigverifyStage {
     }
 
     fn sigverify_service(
+        thread_pool: Arc<ThreadPool>,
         receiver: Receiver<Vec<PacketBundle>>,
         sender: Sender<VerifiedPacketBundle>,
         exit: Arc<AtomicBool>,
     ) {
         let mut workspace = Vec::with_capacity(100);
 
-        let mut num_packets_received = 0;
-        let mut num_bundles_received = 0;
-        let mut num_bundles_failed_sigverify = 0;
-        let mut num_packets_failed_sigverify = 0;
-        let mut num_bundles_failed_send = 0;
-        let mut num_packets_failed_send = 0;
+        let mut num_packets_received: usize = 0;
+        let mut num_bundles_received: usize = 0;
+        let mut num_bundles_failed_sigverify: usize = 0;
+        let mut num_packets_failed_sigverify: usize = 0;
+        let mut num_bundles_failed_send: usize = 0;
+        let mut num_packets_failed_send: usize = 0;
         let mut last_update = Instant::now();
 
         while !exit.load(Ordering::Relaxed) {
@@ -84,12 +87,12 @@ impl BundleSigverifyStage {
 
             workspace.extend(bundles.into_iter().map(|bundle| bundle.take()));
 
-            let packet_count = workspace.iter().map(|bundle| bundle.len()).sum();
+            let packet_count: usize = workspace.iter().map(|bundle| bundle.len()).sum();
 
             num_bundles_received += workspace.len();
             num_packets_received += packet_count;
 
-            ed25519_verify(&mut workspace, false, packet_count);
+            ed25519_verify(&thread_pool, &mut workspace, false, packet_count);
 
             for bundle in workspace.drain(..) {
                 let num_packets_failed_sigverify_in_bundle = bundle
@@ -162,7 +165,8 @@ mod tests {
         let (_unverified_sender, unverified_receiver) = bounded(1024);
         let (verified_sender, _verified_receiver) = bounded(1024);
         let exit = Arc::new(AtomicBool::new(false));
-        let stage = BundleSigverifyStage::new(unverified_receiver, verified_sender, exit.clone());
+        let thread_pool = Arc::new(rayon::ThreadPoolBuilder::new().build().unwrap());
+        let stage = BundleSigverifyStage::new(thread_pool, unverified_receiver, verified_sender, exit.clone());
         exit.store(true, Ordering::Relaxed);
         stage.join().unwrap();
     }
@@ -199,7 +203,8 @@ mod tests {
             .send(vec![packet_bundle_1, packet_bundle_2])
             .unwrap();
 
-        let stage = BundleSigverifyStage::new(unverified_receiver, verified_sender, exit.clone());
+        let thread_pool = Arc::new(rayon::ThreadPoolBuilder::new().build().unwrap());
+        let stage = BundleSigverifyStage::new(thread_pool, unverified_receiver, verified_sender, exit.clone());
 
         let verified_bundle_1 = verified_receiver.recv().unwrap();
         assert_eq!(verified_bundle_1.batch().len(), 3);
@@ -252,7 +257,8 @@ mod tests {
 
         unverified_sender.send(vec![packet_bundle_1]).unwrap();
 
-        let stage = BundleSigverifyStage::new(unverified_receiver, verified_sender, exit.clone());
+        let thread_pool = Arc::new(rayon::ThreadPoolBuilder::new().build().unwrap());
+        let stage = BundleSigverifyStage::new(thread_pool, unverified_receiver, verified_sender, exit.clone());
 
         assert_eq!(
             verified_receiver

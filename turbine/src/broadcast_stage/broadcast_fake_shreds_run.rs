@@ -6,6 +6,7 @@ use {
     solana_hash::Hash,
     solana_keypair::Keypair,
     solana_ledger::shred::{self, ProcessShredsStats, ReedSolomonCache, Shredder},
+    std::net::SocketAddr,
 };
 
 #[derive(Clone)]

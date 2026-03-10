@@ -14,7 +14,7 @@ use {
     solana_runtime_transaction::{
         runtime_transaction::RuntimeTransaction, transaction_with_meta::TransactionWithMeta,
     },
-    std::{collections::BTreeSet, iter::Rev, ops::Bound, sync::Arc, hash::BuildHasherDefault},
+    std::{collections::BTreeSet, hash::BuildHasherDefault, iter::Rev, ops::Bound, sync::Arc},
 };
 
 /// This structure will hold `TransactionState` for the entirety of a
@@ -81,7 +81,7 @@ pub(crate) trait StateContainer<Tx: TransactionWithMeta> {
 
     /// Get mutable transaction state by id.
     fn get_mut_transaction_state(&mut self, id: TransactionId)
-    -> Option<&mut TransactionState<Tx>>;
+        -> Option<&mut TransactionState<Tx>>;
 
     /// Get reference to `SanitizedTransactionTTL` by id.
     /// Panics if the transaction does not exist.
@@ -259,8 +259,22 @@ impl<Tx: TransactionWithMeta> StateContainer<Tx> for TransactionStateContainer<T
     }
 
     fn remove_by_id(&mut self, id: TransactionId) {
+        let priority = match self.id_to_transaction_state.get(id) {
+            Some(BatchIdOrTransactionState::TransactionState(state)) => state.priority(),
+            Some(BatchIdOrTransactionState::Batch(batch_info)) => {
+                self.batch_id_to_transaction_ids
+                    .get(&batch_info.batch_id)
+                    .and_then(|ids| ids.first())
+                    .and_then(|&tid| match self.id_to_transaction_state.get(tid) {
+                        Some(BatchIdOrTransactionState::TransactionState(s)) => Some(s.priority()),
+                        _ => None,
+                    })
+                    .unwrap_or(0)
+            }
+            None => return,
+        };
         self.priority_queue
-            .remove(&TransactionPriorityId::new(state.priority(), id));
+            .remove(&TransactionPriorityId::new(priority, id));
         let BatchIdOrTransactionState::Batch(batch_info) = self.id_to_transaction_state.remove(id)
         else {
             return;
@@ -377,7 +391,7 @@ impl<Tx: TransactionWithMeta> TransactionStateContainer<Tx> {
             .insert(batch_id, transaction_ids);
 
         self.priority_queue
-            .push(TransactionPriorityId::new(priority, batch_id));
+            .insert(TransactionPriorityId::new(priority, batch_id));
 
         Some(batch_id)
     }
@@ -560,8 +574,8 @@ mod tests {
         solana_signer::Signer,
         solana_system_interface::instruction as system_instruction,
         solana_transaction::{
-            Transaction,
             sanitized::{MessageHash, SanitizedTransaction},
+            Transaction,
         },
         std::collections::HashSet,
     };
@@ -634,11 +648,9 @@ mod tests {
         let non_existing_id = 7;
         assert!(container.get_mut_transaction_state(existing_id).is_some());
         assert!(container.get_mut_transaction_state(existing_id).is_some());
-        assert!(
-            container
-                .get_mut_transaction_state(non_existing_id)
-                .is_none()
-        );
+        assert!(container
+            .get_mut_transaction_state(non_existing_id)
+            .is_none());
     }
 
     #[test]

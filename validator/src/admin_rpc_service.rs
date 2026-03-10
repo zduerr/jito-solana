@@ -3,19 +3,19 @@ use {
     arc_swap::ArcSwap,
     crossbeam_channel::Sender,
     jsonrpc_core::{BoxFuture, ErrorCode, MetaIoHandler, Metadata, Result},
-    jsonrpc_core_client::{RpcError, transports::ipc},
+    jsonrpc_core_client::{transports::ipc, RpcError},
     jsonrpc_derive::rpc,
     jsonrpc_ipc_server::{
-        RequestContext, ServerBuilder, tokio::sync::oneshot::channel as oneshot_channel,
+        tokio::sync::oneshot::channel as oneshot_channel, RequestContext, ServerBuilder,
     },
     log::*,
-    serde::{Deserialize, Serialize, de::Deserializer},
+    serde::{de::Deserializer, Deserialize, Serialize},
     solana_accounts_db::accounts_index::AccountIndex,
     solana_core::{
         admin_rpc_post_init::AdminRpcRequestMetadataPostInit,
         banking_stage::{
-            BankingControlMsg, BankingStage,
-            transaction_scheduler::scheduler_controller::SchedulerConfig,
+            transaction_scheduler::scheduler_controller::SchedulerConfig, BankingControlMsg,
+            BankingStage,
         },
         consensus::{tower_storage::TowerStorage, Tower},
         proxy::{
@@ -29,7 +29,7 @@ use {
     },
     solana_geyser_plugin_manager::GeyserPluginManagerRequest,
     solana_gossip::contact_info::{ContactInfo, Protocol, SOCKET_ADDR_UNSPECIFIED},
-    solana_keypair::{Keypair, read_keypair_file},
+    solana_keypair::{read_keypair_file, Keypair},
     solana_metrics::{datapoint_info, datapoint_warn},
     solana_pubkey::Pubkey,
     solana_rpc::rpc::verify_pubkey,
@@ -46,8 +46,8 @@ use {
         path::{Path, PathBuf},
         str::FromStr,
         sync::{
-            Arc, RwLock,
             atomic::{AtomicBool, Ordering},
+            Arc, RwLock,
         },
         thread::{self, Builder},
         time::{Duration, Instant, SystemTime},
@@ -218,7 +218,7 @@ pub trait AdminRpc {
 
     #[rpc(meta, name = "addAuthorizedVoterFromBytes")]
     fn add_authorized_voter_from_bytes(&self, meta: Self::Metadata, keypair: Vec<u8>)
-    -> Result<()>;
+        -> Result<()>;
 
     #[rpc(meta, name = "removeAllAuthorizedVoters")]
     fn remove_all_authorized_voters(&self, meta: Self::Metadata) -> Result<()>;
@@ -334,7 +334,6 @@ pub trait AdminRpc {
         meta: Self::Metadata,
         addr: String,
     ) -> Result<()>;
->>>>>>> 43cfbf56de (Jito Patch)
 }
 
 pub struct AdminRpcImpl;
@@ -1251,12 +1250,12 @@ mod tests {
     use {
         super::*,
         agave_snapshots::snapshot_config::SnapshotConfig,
-        crossbeam_channel::unbounded,
         arc_swap::ArcSwap,
+        crossbeam_channel::unbounded,
         serde_json::Value,
         solana_account::{Account, AccountSharedData},
         solana_accounts_db::{
-            accounts_db::{ACCOUNTS_DB_CONFIG_FOR_TESTING, AccountsDbConfig},
+            accounts_db::{AccountsDbConfig, ACCOUNTS_DB_CONFIG_FOR_TESTING},
             accounts_index::AccountSecondaryIndexes,
         },
         solana_core::{
@@ -1268,10 +1267,10 @@ mod tests {
         solana_ledger::{
             create_new_tmp_ledger,
             genesis_utils::{
-                GenesisConfigInfo, create_genesis_config, create_genesis_config_with_leader,
+                create_genesis_config, create_genesis_config_with_leader, GenesisConfigInfo,
             },
         },
-        solana_net_utils::{SocketAddrSpace, sockets::bind_to_localhost_unique},
+        solana_net_utils::{sockets::bind_to_localhost_unique, SocketAddrSpace},
         solana_program_option::COption,
         solana_program_pack::Pack,
         solana_pubkey::Pubkey,
@@ -1873,6 +1872,7 @@ mod tests {
             post_init: post_init.clone(),
             staked_nodes_overrides: Arc::new(RwLock::new(HashMap::new())),
             rpc_to_plugin_manager_sender: None,
+            bam_url: Arc::new(ArcSwap::from_pointee(None)),
         };
 
         let snapshot_controller = meta.snapshot_controller();
@@ -1966,6 +1966,7 @@ mod tests {
             post_init: Arc::new(RwLock::new(None)),
             staked_nodes_overrides: Arc::new(RwLock::new(HashMap::new())),
             rpc_to_plugin_manager_sender: None,
+            bam_url: Arc::new(ArcSwap::from_pointee(None)),
         };
 
         let response = io.handle_request_sync(request, meta_no_post_init);
