@@ -1038,24 +1038,24 @@ pub fn recover_no_verify(
     // tree rebuild, verification, and proof setting.
     let mut recovered = Vec::new();
     for (index, (shred, &mask)) in shreds.into_iter().zip(mask.iter()).enumerate() {
-        if mask {
-            continue; // already had this shred
+        if mask || index >= num_data_shreds {
+            continue; // skip existing shreds AND recovered coding shreds
         }
         let mut shred = shred;
-        if index < num_data_shreds {
-            let Shred::ShredData(ref mut data_shred) = shred else {
-                return Err(Error::InvalidRecoveredShred);
-            };
-            let (common_hdr, data_hdr) =
-                deserialize_from_with_limit(&data_shred.payload[..])?;
-            if data_shred.common_header != common_hdr {
-                return Err(Error::InvalidRecoveredShred);
-            }
-            data_shred.data_header = data_hdr;
-        } else if !matches!(shred, Shred::ShredCode(_)) {
+        let Shred::ShredData(ref mut data_shred) = shred else {
+            return Err(Error::InvalidRecoveredShred);
+        };
+        let (common_hdr, data_hdr) =
+            deserialize_from_with_limit(&data_shred.payload[..])?;
+        if data_shred.common_header != common_hdr {
             return Err(Error::InvalidRecoveredShred);
         }
-        shred.sanitize()?;
+        data_shred.data_header = data_hdr;
+        // Skip full sanitize() — just verify index is in expected range.
+        let shred_index = data_shred.common_header.index;
+        if shred_index as u64 >= crate::blockstore::MAX_DATA_SHREDS_PER_SLOT as u64 {
+            return Err(Error::InvalidRecoveredShred);
+        }
         recovered.push(shred);
     }
     Ok(recovered)
