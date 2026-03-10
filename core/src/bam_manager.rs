@@ -1,4 +1,3 @@
-use solana_tls_utils::NotifyKeyUpdate;
 /// Facilitates the BAM sub-system in the validator:
 /// - Tries to connect to BAM
 /// - Sends leader state to BAM
@@ -13,7 +12,6 @@ use std::{
         Arc, RwLock,
     },
 };
-
 use {
     crate::{
         admin_rpc_post_init::{KeyUpdaterType, KeyUpdaters},
@@ -33,6 +31,7 @@ use {
     solana_pubkey::Pubkey,
     solana_runtime::bank::Bank,
     solana_signer::Signer,
+    solana_tls_utils::NotifyKeyUpdate,
     solana_version::ClientId,
 };
 

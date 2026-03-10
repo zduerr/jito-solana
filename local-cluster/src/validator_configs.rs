@@ -1,7 +1,7 @@
 use {
     solana_core::validator::ValidatorConfig,
     solana_validator_exit::Exit,
-    std::sync::{Arc, RwLock, atomic::AtomicBool},
+    std::sync::{atomic::AtomicBool, Arc, RwLock},
 };
 
 pub fn safe_clone_config(config: &ValidatorConfig) -> ValidatorConfig {

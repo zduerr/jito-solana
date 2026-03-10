@@ -16,8 +16,8 @@ use {
         collections::HashMap,
         num::Saturating,
         sync::{
-            Arc,
             atomic::{AtomicU64, Ordering},
+            Arc,
         },
     },
 };

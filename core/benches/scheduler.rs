@@ -4,8 +4,8 @@ use solana_core::bundle_stage::bundle_account_locker::BundleAccountLocker;
 #[path = "receive_and_buffer_utils.rs"]
 mod utils;
 use {
-    criterion::{Criterion, Throughput, criterion_group, criterion_main},
-    crossbeam_channel::{Receiver, Sender, unbounded},
+    criterion::{criterion_group, criterion_main, Criterion, Throughput},
+    crossbeam_channel::{unbounded, Receiver, Sender},
     solana_core::banking_stage::{
         decision_maker::BufferedPacketsDecision,
         scheduler_messages::{ConsumeWork, FinishedConsumeWork},

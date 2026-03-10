@@ -482,7 +482,8 @@ impl JsonRpcRequestProcessor {
             ..
         } = config;
         let runtime = service_runtime(rpc_threads, rpc_blocking_threads, rpc_niceness_adj);
-        let client = create_client_for_tests(runtime.handle().clone(), cluster_info.clone(), None, 1);
+        let client =
+            create_client_for_tests(runtime.handle().clone(), cluster_info.clone(), None, 1);
 
         SendTransactionService::new(
             &bank_forks,
@@ -7338,7 +7339,8 @@ pub mod tests {
             runtime.clone(),
         );
 
-        let client = create_client_for_tests(runtime.handle().clone(), cluster_info.clone(), None, 1);
+        let client =
+            create_client_for_tests(runtime.handle().clone(), cluster_info.clone(), None, 1);
         SendTransactionService::new(
             &bank_forks,
             receiver,
@@ -7631,7 +7633,8 @@ pub mod tests {
             ..
         } = config;
         let runtime = service_runtime(rpc_threads, rpc_blocking_threads, rpc_niceness_adj);
-        let client = create_client_for_tests(runtime.handle().clone(), cluster_info.clone(), None, 1);
+        let client =
+            create_client_for_tests(runtime.handle().clone(), cluster_info.clone(), None, 1);
         let (request_processor, receiver) = JsonRpcRequestProcessor::new(
             config,
             None,

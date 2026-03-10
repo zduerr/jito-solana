@@ -166,7 +166,12 @@ mod tests {
         let (verified_sender, _verified_receiver) = bounded(1024);
         let exit = Arc::new(AtomicBool::new(false));
         let thread_pool = Arc::new(rayon::ThreadPoolBuilder::new().build().unwrap());
-        let stage = BundleSigverifyStage::new(thread_pool, unverified_receiver, verified_sender, exit.clone());
+        let stage = BundleSigverifyStage::new(
+            thread_pool,
+            unverified_receiver,
+            verified_sender,
+            exit.clone(),
+        );
         exit.store(true, Ordering::Relaxed);
         stage.join().unwrap();
     }
@@ -204,7 +209,12 @@ mod tests {
             .unwrap();
 
         let thread_pool = Arc::new(rayon::ThreadPoolBuilder::new().build().unwrap());
-        let stage = BundleSigverifyStage::new(thread_pool, unverified_receiver, verified_sender, exit.clone());
+        let stage = BundleSigverifyStage::new(
+            thread_pool,
+            unverified_receiver,
+            verified_sender,
+            exit.clone(),
+        );
 
         let verified_bundle_1 = verified_receiver.recv().unwrap();
         assert_eq!(verified_bundle_1.batch().len(), 3);
@@ -258,7 +268,12 @@ mod tests {
         unverified_sender.send(vec![packet_bundle_1]).unwrap();
 
         let thread_pool = Arc::new(rayon::ThreadPoolBuilder::new().build().unwrap());
-        let stage = BundleSigverifyStage::new(thread_pool, unverified_receiver, verified_sender, exit.clone());
+        let stage = BundleSigverifyStage::new(
+            thread_pool,
+            unverified_receiver,
+            verified_sender,
+            exit.clone(),
+        );
 
         assert_eq!(
             verified_receiver

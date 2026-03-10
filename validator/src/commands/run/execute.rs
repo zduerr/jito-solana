@@ -1,21 +1,21 @@
 use {
     crate::{
-        admin_rpc_service::{self, StakedNodesOverrides, load_staked_nodes_overrides},
+        admin_rpc_service::{self, load_staked_nodes_overrides, StakedNodesOverrides},
         bootstrap,
         cli::{self},
-        commands::{FromClapArgMatches, run::args::RunArgs},
+        commands::{run::args::RunArgs, FromClapArgMatches},
         ledger_lockfile, lock_ledger,
         shred_receiver_addresses::parse_shred_receiver_addresses,
     },
     agave_snapshots::{
-        ArchiveFormat, SnapshotInterval, SnapshotVersion,
         paths::BANK_SNAPSHOTS_DIR,
         snapshot_config::{SnapshotConfig, SnapshotUsage},
+        ArchiveFormat, SnapshotInterval, SnapshotVersion,
     },
-arc_swap::ArcSwap,
     agave_votor::vote_history_storage,
     agave_xdp::{set_cpu_affinity, xdp_retransmitter::XdpConfig},
-    clap::{ArgMatches, crate_name, value_t, value_t_or_exit, values_t, values_t_or_exit},
+    arc_swap::ArcSwap,
+    clap::{crate_name, value_t, value_t_or_exit, values_t, values_t_or_exit, ArgMatches},
     crossbeam_channel::unbounded,
     log::*,
     rand::{rng, seq::SliceRandom},
@@ -23,8 +23,8 @@ arc_swap::ArcSwap,
         accounts_db::{AccountShrinkThreshold, AccountsDbConfig, MarkObsoleteAccounts},
         accounts_file::StorageAccess,
         accounts_index::{
-            AccountSecondaryIndexes, AccountsIndexConfig, DEFAULT_NUM_ENTRIES_OVERHEAD,
-            DEFAULT_NUM_ENTRIES_TO_EVICT, IndexLimit, IndexLimitThreshold, ScanFilter,
+            AccountSecondaryIndexes, AccountsIndexConfig, IndexLimit, IndexLimitThreshold,
+            ScanFilter, DEFAULT_NUM_ENTRIES_OVERHEAD, DEFAULT_NUM_ENTRIES_TO_EVICT,
         },
         partitioned_rewards::PartitionedEpochRewardsConfig,
         utils::{
@@ -35,7 +35,7 @@ arc_swap::ArcSwap,
     solana_clap_utils::input_parsers::{
         keypair_of, keypairs_of, parse_cpu_ranges, pubkey_of, value_of, values_of,
     },
-    solana_clock::{DEFAULT_SLOTS_PER_EPOCH, Slot},
+    solana_clock::{Slot, DEFAULT_SLOTS_PER_EPOCH},
     solana_core::{
         banking_stage::transaction_scheduler::scheduler_controller::SchedulerConfig,
         banking_trace::DISABLED_BAKING_TRACE_DIR,
@@ -48,13 +48,14 @@ arc_swap::ArcSwap,
         tip_manager::{TipDistributionAccountConfig, TipManagerConfig},
         tpu::MAX_VOTES_PER_SECOND,
         validator::{
-            BlockProductionMethod, BlockVerificationMethod, SchedulerPacing, Validator,
-            ValidatorConfig, ValidatorStartProgress, ValidatorTpuConfig, is_snapshot_config_valid,
+            is_snapshot_config_valid, BlockProductionMethod, BlockVerificationMethod,
+            SchedulerPacing, Validator, ValidatorConfig, ValidatorStartProgress,
+            ValidatorTpuConfig,
         },
     },
     solana_genesis_utils::MAX_GENESIS_ARCHIVE_UNPACKED_SIZE,
     solana_gossip::{
-        cluster_info::{DEFAULT_CONTACT_SAVE_INTERVAL_MILLIS, NodeConfig},
+        cluster_info::{NodeConfig, DEFAULT_CONTACT_SAVE_INTERVAL_MILLIS},
         contact_info::ContactInfo,
         node::Node,
     },
@@ -270,7 +271,7 @@ pub fn execute(
     #[cfg(target_os = "linux")]
     let maybe_xdp_retransmit_builder = {
         use {
-            agave_xdp::xdp_retransmitter::{XdpRetransmitBuilder, master_ip_if_bonded},
+            agave_xdp::xdp_retransmitter::{master_ip_if_bonded, XdpRetransmitBuilder},
             caps::{
                 CapSet,
                 Capability::{CAP_BPF, CAP_NET_ADMIN, CAP_NET_RAW, CAP_PERFMON, CAP_SYS_NICE},

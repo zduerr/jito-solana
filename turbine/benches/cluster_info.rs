@@ -15,12 +15,12 @@ use {
     solana_signer::Signer,
     solana_time_utils::{AtomicInterval, timestamp},
     solana_turbine::{
+        ShredReceiverAddresses,
         broadcast_stage::{
             BroadcastSocket, BroadcastStage, broadcast_metrics::TransmitShredsStats,
             broadcast_shreds,
         },
         cluster_nodes::ClusterNodesCache,
-        ShredReceiverAddresses,
     },
     std::{collections::HashMap, sync::Arc, time::Duration},
 };

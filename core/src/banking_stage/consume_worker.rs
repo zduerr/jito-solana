@@ -19,8 +19,8 @@ use {
     solana_time_utils::AtomicInterval,
     std::{
         sync::{
-            Arc,
             atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering},
+            Arc,
         },
         time::{Duration, Instant},
     },
@@ -173,10 +173,10 @@ impl<Tx: TransactionWithMeta> ConsumeWorker<Tx> {
             bank,
             &work.transactions,
             &work.max_ages,
-ExecutionFlags {
-    drop_on_failure: false,
-    all_or_nothing: false,
-},
+            ExecutionFlags {
+                drop_on_failure: false,
+                all_or_nothing: false,
+            },
             None, // bundle account locker checked in scheduler
             work.revert_on_error,
         );
@@ -409,14 +409,14 @@ pub(crate) mod external {
             bundle_stage::bundle_account_locker::BundleAccountLocker,
         },
         agave_scheduler_bindings::{
-            MAX_TRANSACTIONS_PER_MESSAGE, PackToWorkerMessage, SharablePubkeys,
-            TransactionResponseRegion, WorkerToPackMessage,
             pack_message_flags::{self, check_flags, execution_flags},
             processed_codes,
             worker_message_types::{
-                CheckResponse, ExecutionResponse, fee_payer_balance_flags, not_included_reasons,
-                parsing_and_sanitization_flags, resolve_flags, status_check_flags,
+                fee_payer_balance_flags, not_included_reasons, parsing_and_sanitization_flags,
+                resolve_flags, status_check_flags, CheckResponse, ExecutionResponse,
             },
+            PackToWorkerMessage, SharablePubkeys, TransactionResponseRegion, WorkerToPackMessage,
+            MAX_TRANSACTIONS_PER_MESSAGE,
         },
         agave_scheduling_utils::{
             error::transaction_error_to_not_included_reason,
@@ -428,7 +428,7 @@ pub(crate) mod external {
             transaction_data::TransactionData, transaction_view::SanitizedTransactionView,
         },
         solana_account::ReadableAccount,
-        solana_clock::{MAX_PROCESSING_AGE, Slot},
+        solana_clock::{Slot, MAX_PROCESSING_AGE},
         solana_cost_model::cost_model::CostModel,
         solana_message::v0::LoadedAddresses,
         solana_pubkey::Pubkey,
@@ -2403,12 +2403,12 @@ mod tests {
         solana_keypair::Keypair,
         solana_ledger::genesis_utils::GenesisConfigInfo,
         solana_message::{
-            AddressLookupTableAccount, SimpleAddressLoader, VersionedMessage,
             v0::{self, LoadedAddresses},
+            AddressLookupTableAccount, SimpleAddressLoader, VersionedMessage,
         },
         solana_net_utils::SocketAddrSpace,
         solana_poh::{
-            record_channels::{RecordReceiver, record_channels},
+            record_channels::{record_channels, RecordReceiver},
             transaction_recorder::TransactionRecorder,
         },
         solana_program_binaries::{jito_tip_distribution, jito_tip_payment},

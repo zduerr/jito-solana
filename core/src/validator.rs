@@ -1,8 +1,7 @@
 //! The `validator` module hosts all the validator microservices.
 
-use crate::tip_manager::TipManagerConfig;
 pub use solana_perf::report_target_features;
-use solana_turbine::ShredReceiverAddresses;
+use {crate::tip_manager::TipManagerConfig, solana_turbine::ShredReceiverAddresses};
 use {
     crate::{
         admin_rpc_post_init::{AdminRpcRequestMetadataPostInit, KeyUpdaterType, KeyUpdaters},

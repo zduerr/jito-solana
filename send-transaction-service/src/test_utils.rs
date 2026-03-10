@@ -2,12 +2,12 @@
 //! with the client type.
 
 use {
-    crate::{transaction_client::TpuClientNextClient, tpu_info::NullTpuInfo},
+    crate::{tpu_info::NullTpuInfo, transaction_client::TpuClientNextClient},
     solana_gossip::{cluster_info::ClusterInfo, contact_info::ContactInfo},
     solana_keypair::Keypair,
     solana_net_utils::{
-        SocketAddrSpace,
         sockets::{bind_to, localhost_port_range_for_tests},
+        SocketAddrSpace,
     },
     solana_signer::Signer,
     std::{

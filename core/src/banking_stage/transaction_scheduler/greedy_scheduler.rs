@@ -4,7 +4,7 @@ use {
     super::{
         scheduler::{PreLockFilterAction, Scheduler, SchedulingSummary},
         scheduler_common::{
-            SchedulingCommon, TransactionSchedulingError, TransactionSchedulingInfo, select_thread,
+            select_thread, SchedulingCommon, TransactionSchedulingError, TransactionSchedulingInfo,
         },
         scheduler_error::SchedulerError,
         transaction_priority_id::TransactionPriorityId,

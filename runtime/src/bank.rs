@@ -1878,7 +1878,7 @@ impl Bank {
         )
         .expect(
             "Stakes cache is inconsistent with accounts-db. This can indicate a corrupted \
-                 snapshot or bugs in cached accounts or accounts-db.",
+             snapshot or bugs in cached accounts or accounts-db.",
         ));
         info!("Loading Stakes took: {stakes_time}");
         assert!(

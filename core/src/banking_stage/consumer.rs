@@ -438,8 +438,8 @@ impl Consumer {
             };
         }
 
-        let (load_and_execute_transactions_output, load_execute_us) =
-            measure_us!(bank.load_and_execute_transactions(
+        let (load_and_execute_transactions_output, load_execute_us) = measure_us!(bank
+            .load_and_execute_transactions(
                 batch,
                 MAX_PROCESSING_AGE,
                 &mut execute_and_commit_timings.execute_timings,
@@ -539,9 +539,11 @@ impl Consumer {
         // Entries do **not** yet support conflicting transactions. To get around this we create
         // lists of transactions that are non-conflicting to shred out into entries. If we don't do
         // this, then blocks are rejected by consensus/replay.
-        let (batches, prepare_record_transactions_us) = measure_us!(
-            Self::create_sequential_non_conflicting_batches(&mut reusables, processed_transactions.into_iter())
-        );
+        let (batches, prepare_record_transactions_us) =
+            measure_us!(Self::create_sequential_non_conflicting_batches(
+                &mut reusables,
+                processed_transactions.into_iter()
+            ));
         self.seq_not_conflict_batch_reusables.set(reusables);
         let hashes = batches
             .iter()
@@ -741,7 +743,7 @@ mod tests {
         crate::banking_stage::tests::{create_slow_genesis_config, sanitize_transactions},
         agave_reserved_account_keys::ReservedAccountKeys,
         crossbeam_channel::unbounded,
-        solana_account::{AccountSharedData, state_traits::StateMut},
+        solana_account::{state_traits::StateMut, AccountSharedData},
         solana_address_lookup_table_interface::{
             self as address_lookup_table,
             state::{AddressLookupTable, LookupTableMeta},
@@ -754,8 +756,8 @@ mod tests {
         solana_ledger::{
             blockstore_processor::{TransactionStatusMessage, TransactionStatusSender},
             genesis_utils::{
-                GenesisConfigInfo, bootstrap_validator_stake_lamports,
-                create_genesis_config_with_leader,
+                bootstrap_validator_stake_lamports, create_genesis_config_with_leader,
+                GenesisConfigInfo,
             },
         },
         solana_message::{
@@ -764,7 +766,7 @@ mod tests {
         },
         solana_nonce::{self as nonce, state::DurableNonce},
         solana_nonce_account::verify_nonce_account,
-        solana_poh::record_channels::{RecordReceiver, record_channels},
+        solana_poh::record_channels::{record_channels, RecordReceiver},
         solana_pubkey::Pubkey,
         solana_runtime::{bank_forks::BankForks, prioritization_fee_cache::PrioritizationFeeCache},
         solana_runtime_transaction::runtime_transaction::RuntimeTransaction,
@@ -772,7 +774,7 @@ mod tests {
         solana_system_interface::{instruction as system_instruction, program as system_program},
         solana_system_transaction as system_transaction,
         solana_transaction::{
-            Transaction, sanitized::MessageHash, versioned::VersionedTransaction,
+            sanitized::MessageHash, versioned::VersionedTransaction, Transaction,
         },
         std::{
             borrow::Cow,
@@ -1533,11 +1535,9 @@ mod tests {
         } = process_transactions_summary;
 
         // Transaction is successfully processed, but not committed due to poh recording error.
-        assert!(
-            execute_and_commit_transactions_output
-                .commit_transactions_result
-                .is_err()
-        );
+        assert!(execute_and_commit_transactions_output
+            .commit_transactions_result
+            .is_err());
         assert_eq!(
             execute_and_commit_transactions_output
                 .transaction_counts

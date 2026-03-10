@@ -1,6 +1,6 @@
 use {
     bincode::{deserialize, serialize},
-    crossbeam_channel::{Receiver, Sender, unbounded},
+    crossbeam_channel::{unbounded, Receiver, Sender},
     futures::{future, prelude::stream::StreamExt},
     solana_account::Account,
     solana_banks_interface::{
@@ -35,18 +35,18 @@ use {
         io,
         net::{IpAddr, Ipv4Addr, SocketAddr},
         sync::{
-            Arc, RwLock,
             atomic::{AtomicBool, Ordering},
+            Arc, RwLock,
         },
         thread::Builder,
         time::Duration,
     },
     tarpc::{
-        ClientMessage, Response,
         context::Context,
         serde_transport::tcp,
-        server::{self, Channel, incoming::Incoming},
+        server::{self, incoming::Incoming, Channel},
         transport::{self, channel::UnboundedChannel},
+        ClientMessage, Response,
     },
     tokio::{runtime::Handle, time::sleep},
     tokio_serde::formats::Bincode,

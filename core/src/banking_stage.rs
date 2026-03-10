@@ -446,13 +446,11 @@ impl BankingStage {
                     .enable_all()
                     .build()
                     .unwrap();
-                rt.block_on(manager.run(
-                    BankingControlMsg::Internal {
-                        block_production_method,
-                        num_workers,
-                        config: scheduler_config,
-                    },
-                ))
+                rt.block_on(manager.run(BankingControlMsg::Internal {
+                    block_production_method,
+                    num_workers,
+                    config: scheduler_config,
+                }))
             })
             .unwrap();
 
@@ -462,10 +460,7 @@ impl BankingStage {
         }
     }
 
-    async fn run(
-        mut self,
-        initial_args: BankingControlMsg,
-    ) -> std::thread::Result<()> {
+    async fn run(mut self, initial_args: BankingControlMsg) -> std::thread::Result<()> {
         self.spawn_scheduler(initial_args).unwrap();
 
         loop {
@@ -497,10 +492,7 @@ impl BankingStage {
         Ok(())
     }
 
-    async fn cycle_threads(
-        &mut self,
-        args: BankingControlMsg,
-    ) -> Result<(), ()> {
+    async fn cycle_threads(&mut self, args: BankingControlMsg) -> Result<(), ()> {
         // Shutdown all current threads.
         self.worker_exit_signal.store(true, Ordering::Relaxed);
         while let Some((name, res)) = self.threads.next().await {
@@ -524,13 +516,11 @@ impl BankingStage {
             block_production_method: BlockProductionMethod::default(),
             num_workers: BankingStage::default_num_workers(),
             config: SchedulerConfig::default(),
-        }).await
+        })
+        .await
     }
 
-    fn spawn_scheduler(
-        &mut self,
-        args: BankingControlMsg,
-    ) -> Result<(), ()> {
+    fn spawn_scheduler(&mut self, args: BankingControlMsg) -> Result<(), ()> {
         let threads = (match args {
             BankingControlMsg::Internal {
                 block_production_method,
@@ -763,7 +753,8 @@ impl BankingStage {
                             blacklisted_accounts.clone(),
                         );
 
-                        let bam_sharable_banks = bam_scheduler_bank_forks.read().unwrap().sharable_banks();
+                        let bam_sharable_banks =
+                            bam_scheduler_bank_forks.read().unwrap().sharable_banks();
                         let mut scheduler_controller = SchedulerController::new_with_metrics_id(
                             BAM_METRICS_ID_OFFSET,
                             bam_scheduler_exit,

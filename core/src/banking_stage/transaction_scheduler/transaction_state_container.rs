@@ -261,16 +261,15 @@ impl<Tx: TransactionWithMeta> StateContainer<Tx> for TransactionStateContainer<T
     fn remove_by_id(&mut self, id: TransactionId) {
         let priority = match self.id_to_transaction_state.get(id) {
             Some(BatchIdOrTransactionState::TransactionState(state)) => state.priority(),
-            Some(BatchIdOrTransactionState::Batch(batch_info)) => {
-                self.batch_id_to_transaction_ids
-                    .get(&batch_info.batch_id)
-                    .and_then(|ids| ids.first())
-                    .and_then(|&tid| match self.id_to_transaction_state.get(tid) {
-                        Some(BatchIdOrTransactionState::TransactionState(s)) => Some(s.priority()),
-                        _ => None,
-                    })
-                    .unwrap_or(0)
-            }
+            Some(BatchIdOrTransactionState::Batch(batch_info)) => self
+                .batch_id_to_transaction_ids
+                .get(&batch_info.batch_id)
+                .and_then(|ids| ids.first())
+                .and_then(|&tid| match self.id_to_transaction_state.get(tid) {
+                    Some(BatchIdOrTransactionState::TransactionState(s)) => Some(s.priority()),
+                    _ => None,
+                })
+                .unwrap_or(0),
             None => return,
         };
         self.priority_queue

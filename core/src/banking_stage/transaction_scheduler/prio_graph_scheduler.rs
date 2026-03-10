@@ -472,7 +472,7 @@ mod tests {
             scheduler_messages::{MaxAge, TransactionId},
             transaction_scheduler::transaction_state_container::TransactionStateContainer,
         },
-        crossbeam_channel::{Receiver, unbounded},
+        crossbeam_channel::{unbounded, Receiver},
         itertools::Itertools,
         solana_compute_budget_interface::ComputeBudgetInstruction,
         solana_genesis_config::GenesisConfig,
@@ -484,8 +484,8 @@ mod tests {
         solana_runtime_transaction::runtime_transaction::RuntimeTransaction,
         solana_signer::Signer,
         solana_system_interface::instruction as system_instruction,
-        solana_transaction::{Transaction, sanitized::SanitizedTransaction},
         solana_system_transaction::transfer,
+        solana_transaction::{sanitized::SanitizedTransaction, Transaction},
         std::borrow::Borrow,
     };
 

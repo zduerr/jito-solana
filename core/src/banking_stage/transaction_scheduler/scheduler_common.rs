@@ -9,7 +9,7 @@ use {
         ConsumeWork, FinishedConsumeWork, MaxAge, TransactionBatchId, TransactionId,
     },
     agave_scheduling_utils::thread_aware_account_locks::{
-        MAX_THREADS, ThreadAwareAccountLocks, ThreadId, ThreadSet,
+        ThreadAwareAccountLocks, ThreadId, ThreadSet, MAX_THREADS,
     },
     crossbeam_channel::{Receiver, Sender, TryRecvError},
     itertools::izip,

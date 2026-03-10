@@ -1,15 +1,15 @@
 use {
     crate::{commands, commands::run::args::pub_sub_config},
     agave_snapshots::{
-        DEFAULT_ARCHIVE_COMPRESSION, SnapshotVersion,
         snapshot_config::{
             DEFAULT_FULL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS,
             DEFAULT_INCREMENTAL_SNAPSHOT_ARCHIVE_INTERVAL_SLOTS,
             DEFAULT_MAX_FULL_SNAPSHOT_ARCHIVES_TO_RETAIN,
             DEFAULT_MAX_INCREMENTAL_SNAPSHOT_ARCHIVES_TO_RETAIN,
         },
+        SnapshotVersion, DEFAULT_ARCHIVE_COMPRESSION,
     },
-    clap::{App, AppSettings, Arg, ArgMatches, SubCommand, crate_description, crate_name},
+    clap::{crate_description, crate_name, App, AppSettings, Arg, ArgMatches, SubCommand},
     log::warn,
     solana_accounts_db::accounts_db::{
         DEFAULT_ACCOUNTS_SHRINK_OPTIMIZE_TOTAL_SPACE, DEFAULT_ACCOUNTS_SHRINK_RATIO,
@@ -40,7 +40,7 @@ use {
 pub mod thread_args;
 use {
     solana_core::banking_stage::BankingStage,
-    thread_args::{DefaultThreadArgs, thread_args},
+    thread_args::{thread_args, DefaultThreadArgs},
 };
 
 // The default minimal snapshot download speed (bytes/second)

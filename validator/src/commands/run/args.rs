@@ -4,8 +4,8 @@ use {
         cli::{hash_validator, port_range_validator, port_validator, DefaultArgs},
         commands::{bam, FromClapArgMatches, Result},
     },
-    agave_snapshots::{SUPPORTED_ARCHIVE_COMPRESSION, SnapshotVersion},
-    clap::{App, Arg, ArgMatches, values_t},
+    agave_snapshots::{SnapshotVersion, SUPPORTED_ARCHIVE_COMPRESSION},
+    clap::{values_t, App, Arg, ArgMatches},
     solana_accounts_db::utils::create_and_canonicalize_directory,
     solana_clap_utils::{
         hidden_unless_forced,
@@ -1216,7 +1216,6 @@ pub fn add_args<'a>(app: App<'a, 'a>, default_args: &'a DefaultArgs) -> App<'a, 
             .validator(|s| is_within_range(s, 1..))
             .help(DefaultSchedulerPool::cli_message()),
     )
-    
     .arg(bam::argument())
     .arg(
         Arg::with_name("block_engine_url")
@@ -1397,7 +1396,7 @@ mod tests {
         std::{
             fs,
             net::{IpAddr, Ipv4Addr},
-            path::{PathBuf, absolute},
+            path::{absolute, PathBuf},
         },
     };
 
