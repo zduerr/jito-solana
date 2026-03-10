@@ -254,6 +254,7 @@ fn bench_banking(
         s,
         None,
         bank_forks,
+        None,
         HashSet::default(),
         BundleAccountLocker::default(),
         None,

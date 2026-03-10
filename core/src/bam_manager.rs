@@ -143,7 +143,7 @@ impl BamManager {
 
                     // Set ClientId to 'JitoSolana'
                     if current_client_id != fallback_client_id {
-                        Self::set_client_id(&dependencies.cluster_info, fallback_client_id.clone());
+                        Self::set_client_id(&dependencies.cluster_info, fallback_client_id);
                         current_client_id = fallback_client_id;
                     }
 
@@ -289,7 +289,7 @@ impl BamManager {
 
             // Set BAM Client Id (If not set already)
             if current_client_id != bam_client_id {
-                Self::set_client_id(&dependencies.cluster_info, bam_client_id.clone());
+                Self::set_client_id(&dependencies.cluster_info, bam_client_id);
                 current_client_id = bam_client_id;
             }
 

@@ -642,8 +642,8 @@ impl BlockEngineStage {
 
         let tasks = endpoints
             .iter()
-            .cloned()
             .map(|endpoint| {
+                let endpoint = endpoint.clone();
                 task::spawn(async move {
                     let rtt_res = Self::probe_grpc_rtt_us(&endpoint.block_engine_url).await;
                     (endpoint, rtt_res)

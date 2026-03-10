@@ -2287,12 +2287,7 @@ impl ClusterInfo {
     }
 
     pub fn get_client_id(&self) -> ClientId {
-        self.my_contact_info
-            .read()
-            .unwrap()
-            .version
-            .client()
-            .clone()
+        *self.my_contact_info.read().unwrap().version.client()
     }
 }
 

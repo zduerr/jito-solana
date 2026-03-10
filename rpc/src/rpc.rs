@@ -3681,7 +3681,7 @@ pub mod rpc_full {
                             (
                                 Some(version.to_string()),
                                 Some(version.feature_set()),
-                                Some(version.client().clone()),
+                                Some(*version.client()),
                             )
                         } else {
                             (None, None, None)

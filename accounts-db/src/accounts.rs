@@ -1712,9 +1712,9 @@ mod tests {
             instructions,
         );
         let tx2 = new_sanitized_tx(&[&keypair3], message, Hash::default());
-        let txs = vec![tx0, tx1, tx2];
+        let txs = [tx0, tx1, tx2];
 
-        let qos_results = vec![Ok(()), Ok(()), Ok(())];
+        let qos_results = [Ok(()), Ok(()), Ok(())];
 
         let results = accounts.lock_accounts(
             txs.iter(),

@@ -125,6 +125,7 @@ where
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_with_metrics_id(
         metrics_id: u32,
         exit: Arc<AtomicBool>,

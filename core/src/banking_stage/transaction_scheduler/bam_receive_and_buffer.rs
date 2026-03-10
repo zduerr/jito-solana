@@ -750,7 +750,7 @@ impl BamReceiveAndBuffer {
         });
 
         let mut verify_packet_batch_time_us = Measure::start("verify_packet_batch_time_us");
-        ed25519_verify(&sigverify_thread_pool, packet_batches, false, packet_count);
+        ed25519_verify(sigverify_thread_pool, packet_batches, false, packet_count);
         verify_packet_batch_time_us.stop();
 
         metrics
