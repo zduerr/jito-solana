@@ -22,7 +22,7 @@ pub fn create_test_cluster_info() -> Arc<ClusterInfo> {
     let keypair = Keypair::new();
     let contact_info = ContactInfo::new_with_socketaddr(
         &keypair.pubkey(),
-        &SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 0),
+        &SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 1234),
     );
     Arc::new(ClusterInfo::new(
         contact_info,
