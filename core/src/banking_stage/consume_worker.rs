@@ -2461,7 +2461,7 @@ mod tests {
             mint_keypair,
             voting_keypair,
             ..
-        } = create_slow_genesis_config(10_000);
+        } = create_slow_genesis_config(10_000_000_000);
         if default_rent {
             // this is needed when you need to access accountsdb (0 lamports accounts don't get written to accountsdb)
             // if you don't have this, have fun debugging for a few hours :angry:
