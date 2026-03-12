@@ -1061,6 +1061,98 @@ pub fn recover_no_verify(
     Ok(recovered)
 }
 
+/// Like `recover_no_verify` but further optimized for the greedy hot path:
+/// - Skips signature comparison (trusted single source)
+/// - Uses `reconstruct_data` instead of `reconstruct` (skip coding shard recovery)
+/// - Skips `deserialize_from_with_limit` header deserialization on recovered shreds
+/// Returns recovered data shreds with raw payloads (headers NOT deserialized into
+/// struct fields — caller must read data offsets directly from payload bytes).
+pub fn recover_no_verify_fast(
+    mut shreds: Vec<Shred>,
+    reed_solomon_cache: &ReedSolomonCache,
+) -> Result<Vec<Shred>, Error> {
+    // Sort shreds by their erasure shard index.
+    let is_sorted = |(a, b)| cmp_shred_erasure_shard_index(a, b).is_le();
+    if !shreds.iter().tuple_windows().all(is_sorted) {
+        shreds.sort_unstable_by(cmp_shred_erasure_shard_index);
+    }
+    // Grab {common, coding} headers from the last coding shred.
+    let (common_header, coding_header, chained_merkle_root, retransmitter_signature) = {
+        let Some(Shred::ShredCode(shred)) = shreds.last() else {
+            return Err(Error::from(TooFewParityShards));
+        };
+        let position = u32::from(shred.coding_header.position);
+        let index = shred.common_header.index.checked_sub(position);
+        let common_header = ShredCommonHeader {
+            index: index.ok_or(Error::from(InvalidIndex))?,
+            ..shred.common_header
+        };
+        let coding_header = CodingShredHeader {
+            position: 0u16,
+            ..shred.coding_header
+        };
+        (
+            common_header,
+            coding_header,
+            shred.chained_merkle_root().ok(),
+            shred.retransmitter_signature().ok(),
+        )
+    };
+    let num_data_shreds = usize::from(coding_header.num_data_shreds);
+    let num_coding_shreds = usize::from(coding_header.num_coding_shreds);
+    let num_shards = num_data_shreds + num_coding_shreds;
+    // Identify which shreds are missing and create stub shreds in their place.
+    // Skip signature comparison — trusted single source.
+    let mut mask = vec![false; num_shards];
+    let mut shreds = {
+        let make_stub = |erasure_shard_index| {
+            make_stub_shred(
+                erasure_shard_index,
+                &common_header,
+                &coding_header,
+                &chained_merkle_root,
+                &retransmitter_signature,
+            )
+        };
+        let mut batch = Vec::with_capacity(num_shards);
+        for shred in shreds {
+            let erasure_shard_index = shred.erasure_shard_index()?;
+            if !(batch.len()..num_shards).contains(&erasure_shard_index) {
+                return Err(Error::from(InvalidIndex));
+            }
+            while batch.len() < erasure_shard_index {
+                batch.push(make_stub(batch.len())?);
+            }
+            mask[erasure_shard_index] = true;
+            batch.push(shred);
+        }
+        while batch.len() < num_shards {
+            batch.push(make_stub(batch.len())?);
+        }
+        batch
+    };
+    // Obtain erasure encoded shards from the shreds and reconstruct DATA shards only.
+    let mut shards: Vec<(&mut [u8], bool)> = shreds
+        .iter_mut()
+        .zip(&mask)
+        .map(|(shred, &mask)| Ok((shred.erasure_shard_mut()?, mask)))
+        .collect::<Result<_, Error>>()?;
+    reed_solomon_cache
+        .get(num_data_shreds, num_coding_shreds)?
+        .reconstruct_data(&mut shards)?;
+    // Return recovered data shreds WITHOUT deserializing headers.
+    // The RS recovery has filled in the erasure-coded portion of the payload;
+    // the caller can read data offsets directly from the raw payload bytes.
+    let mut recovered = Vec::new();
+    for (index, (shred, &mask)) in shreds.into_iter().zip(mask.iter()).enumerate() {
+        if mask || index >= num_data_shreds {
+            continue; // skip existing shreds AND coding shreds
+        }
+        recovered.push(shred);
+    }
+    Ok(recovered)
+}
+
 // Compares shreds of the same erasure batch by their erasure shard index
 // within the erasure batch.
 #[inline]
