@@ -488,7 +488,7 @@ impl Shredder {
 impl ReedSolomonCache {
     const CAPACITY: usize = 4 * DATA_SHREDS_PER_FEC_BLOCK;
 
-    pub(crate) fn get(
+    pub fn get(
         &self,
         data_shards: usize,
         parity_shards: usize,
